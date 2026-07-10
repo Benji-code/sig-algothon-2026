@@ -1,19 +1,19 @@
 # Sigma0 - Algothon 2026
 # Stat-arb on cointegrated pairs. The generator plants pairs whose log price
-# ratio is stationary (unit cointegrating vector, half-life around a week).
-# We screen for them at runtime, seed with the pairs found on the released
-# data, and take full-width spread positions while a spread is displaced.
+# ratio is stationary (half-life around a week). We screen for them at
+# runtime with a fitted-ratio dragnet, seed with the pairs found on the
+# released data, and take full-width spread positions while displaced.
 #
 # numpy only.
 
 import numpy as np
 
 LEG = 10_000          # per-leg dollars (= per-instrument cap)
-BAND = 0.30           # trade when |z| exceeds this, flat otherwise
+BAND = 0.25           # trade when |z| exceeds this (0.0 = always in)
 RESCAN = 20           # days between pair scans
 T_KEEP = -2.5         # AR(1) t-stat needed to keep a seeded pair
-T_NEW = -4.0          # stricter cut for pairs found live
-MAX_PAIRS = 10
+T_GATE = -3.4         # dragnet gate for pairs found live
+MAX_PAIRS = 24
 WARMUP = 120
 
 # pairs detected on the released 500d file (column indices, strongest first)
@@ -33,17 +33,19 @@ def ar1_t(s):
 
 
 def scan(logp):
-    # unit-ratio screen: planted pairs sit near cointegrating vector (1,-1),
-    # so log(Pi/Pj) mean-reverts and a cheap AR(1) gate finds them without
-    # needing a full Engle-Granger pass
+    # fitted-ratio screen: OLS hedge ratio per pair, same AR(1) gate on the
+    # residual spread; catches non-unit plants the ratio screen would miss
     n = logp.shape[0]
+    L = logp - logp.mean(axis=1, keepdims=True)
     hits = []
     for i in range(1, n - 1):
-        _, t = ar1_t(logp[i] - logp[i + 1:])
-        for k in np.where(t < T_NEW)[0]:
+        x = L[i]; Y = L[i + 1:]
+        b = (Y @ x) / (x @ x)
+        _, t = ar1_t(Y - np.outer(b, x))
+        for k in np.where(t < T_GATE)[0]:
             hits.append((t[k], i, i + 1 + k))
     hits.sort()
-    return [(i, j) for _, i, j in hits]
+    return hits
 
 
 def getMyPosition(prcSoFar):
@@ -53,15 +55,15 @@ def getMyPosition(prcSoFar):
     logp = np.log(prcSoFar)
 
     if nt - state["scanned"] >= RESCAN:
-        pairs = []
+        pairs, used = [], set()
         for i, j in SEED_PAIRS:
             if j < n:
-                _, t = ar1_t((logp[i] - logp[j])[None, :])
-                if t[0] < T_KEEP:
-                    pairs.append((i, j))
-        for p in scan(logp):
-            if p not in pairs and len(pairs) < MAX_PAIRS:
-                pairs.append(p)
+                _, ts = ar1_t((logp[i] - logp[j])[None, :])
+                if ts[0] < T_KEEP:
+                    pairs.append((i, j)); used.update((i, j))
+        for tk, i, j in scan(logp):
+            if i not in used and j not in used and len(pairs) < MAX_PAIRS:
+                pairs.append((i, j)); used.update((i, j))
         state["scanned"] = nt
         state["pairs"] = pairs
 
