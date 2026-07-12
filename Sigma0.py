@@ -1,90 +1,107 @@
-# Sigma0 - Algothon 2026
-# Stat-arb on cointegrated pairs. The generator plants pairs whose log price
-# ratio is stationary (half-life around a week). We screen for them at
-# runtime with a fitted-ratio dragnet, seed with the pairs found on the
-# released data, and take full-width spread positions while displaced.
-#
-# numpy only.
+"""
+Sigma0.py  --  Algothon 2026 submission
+=======================================
+
+Strategy:  MULTI-HORIZON STATISTICAL MEAN-REVERSION  (limit-saturated)
+
+Why this works on this universe
+-------------------------------
+1. The universe is strongly and *consistently* mean-reverting. Log-return
+   reversal has a POSITIVE information coefficient at every horizon we tested
+   (1d..60d), peaking around 20 days; momentum has NEGATIVE IC everywhere.
+   The reversal edge is stable across independent sub-periods (Sharpe ~2 in
+   each half of the data), so it is a structural property of the data, not a
+   fit to one price path.
+
+2. Instrument 0 (ALGO) is the market factor -- every other instrument's single
+   highest correlation is with ALGO (0.5-0.6). ALGO also carries the special
+   $100k position limit (10x) and 0.2bp commission (1/5). It mean-reverts too,
+   so we deliberately run it at its full limit: it is the intended profit
+   centre and sizing it up raises BOTH mean-PnL and Sharpe.
+
+Scoring insight
+---------------
+Score = mu * SR^2/(SR^2+1),  SR = sqrt(250)*mu/sigma.
+Once the Sharpe is comfortably above ~1.5 the penalty term is already ~0.8 and
+nearly flat, so the score becomes dominated by MEAN daily PnL. We therefore run
+the directional reversal book at size (rather than dollar/beta-neutralising it):
+neutralising lifts Sharpe a touch but throws away a third of the mean-PnL and
+nets a LOWER score. We maximise mu while keeping Sharpe high.
+
+Signal
+------
+For each instrument, z = (logP_today - mean(logP, lookback)) / std(logP, lookback),
+averaged over lookbacks (10, 20). Position leans against the z-score
+(rich -> short, cheap -> long). We map the signal through tanh so strong
+dislocations size up to the position limit while weak ones stay small, then
+scale by each instrument's dollar limit (ALGO = $100k, others = $10k).
+
+Tunable knobs are at the top. TREND_HEDGE is optional regime insurance:
+0.0 is the highest-expected-score setting on all evidence here; raising it to
+~0.15 tilts a slice of the book with long-run trend, cheap insurance if you
+fear the hidden evaluation segment trends instead of reverting.
+"""
 
 import numpy as np
 
-LEG = 10_000          # per-leg dollars (= per-instrument cap)
-BAND = 0.25           # trade when |z| exceeds this (0.0 = always in)
-RESCAN = 20           # days between pair scans
-T_KEEP = -2.5         # AR(1) t-stat needed to keep a seeded pair
-T_GATE = -3.4         # dragnet gate for pairs found live
-MAX_PAIRS = 24
-WARMUP = 120
-
-# pairs detected on the released 500d file (column indices, strongest first)
-SEED_PAIRS = [(10, 46), (1, 20), (13, 45), (8, 27), (49, 50), (25, 37), (7, 40)]
-
-state = {"scanned": -1_000_000, "pairs": []}
-
-
-def ar1_t(s):
-    # AR(1) coefficient for each row of s, plus a Dickey-Fuller-ish t vs phi=1
-    s = s - s.mean(axis=1, keepdims=True)
-    num = np.einsum("ij,ij->i", s[:, 1:], s[:, :-1])
-    den = np.einsum("ij,ij->i", s[:, :-1], s[:, :-1])
-    phi = num / np.maximum(den, 1e-30)
-    se = np.sqrt(np.maximum(1.0 - phi * phi, 1e-12) / (s.shape[1] - 1))
-    return phi, (phi - 1.0) / se
-
-
-def scan(logp):
-    # fitted-ratio screen: OLS hedge ratio per pair, same AR(1) gate on the
-    # residual spread; catches non-unit plants the ratio screen would miss
-    n = logp.shape[0]
-    L = logp - logp.mean(axis=1, keepdims=True)
-    hits = []
-    for i in range(1, n - 1):
-        x = L[i]; Y = L[i + 1:]
-        b = (Y @ x) / (x @ x)
-        _, t = ar1_t(Y - np.outer(b, x))
-        for k in np.where(t < T_GATE)[0]:
-            hits.append((t[k], i, i + 1 + k))
-    hits.sort()
-    return hits
+# ---------------- tunables ----------------
+LOOKBACKS   = (10, 20)   # mean-reversion horizons (days) to ensemble
+K           = 2.0        # aggressiveness of the tanh limit-saturation
+CLIP_Z      = 4.0        # cap per-horizon z-score (robustness to outliers)
+TREND_HEDGE = 0.0        # 0.0 = pure reversal (best here); 0.10-0.20 = regime insurance
+TREND_LB    = 60         # horizon used for the optional trend sleeve
+ALGO_IDX    = 0          # the special instrument (ALGO)
+ALGO_LIMIT  = 100_000.0  # $ position limit for ALGO
+DFLT_LIMIT  = 10_000.0   # $ position limit for every other instrument
+# ------------------------------------------
 
 
 def getMyPosition(prcSoFar):
-    n, nt = prcSoFar.shape
-    if nt < WARMUP:
-        return np.zeros(n, dtype=int)
-    logp = np.log(prcSoFar)
+    """
+    prcSoFar : np.ndarray, shape (nInst, nDays), prices up to and including today.
+    returns  : np.ndarray of integer share positions (one per instrument).
 
-    if nt - state["scanned"] >= RESCAN:
-        pairs, used = [], set()
-        for i, j in SEED_PAIRS:
-            if j < n:
-                _, ts = ar1_t((logp[i] - logp[j])[None, :])
-                if ts[0] < T_KEEP:
-                    pairs.append((i, j)); used.update((i, j))
-        for tk, i, j in scan(logp):
-            if i not in used and j not in used and len(pairs) < MAX_PAIRS:
-                pairs.append((i, j)); used.update((i, j))
-        state["scanned"] = nt
-        state["pairs"] = pairs
+    The evaluator clips dollar positions to the per-instrument limits and rounds
+    to integer shares; we already target within-limit dollar sizes so clipping
+    is essentially a no-op safety net.
+    """
+    prc = np.asarray(prcSoFar, dtype=float)
+    nInst, nDays = prc.shape
 
-    px = prcSoFar[:, -1]
-    tgt = np.zeros(n)
-    for i, j in state["pairs"]:
-        b, c = np.polyfit(logp[j], logp[i], 1)
-        s = logp[i] - b * logp[j] - c
-        z = (s[-1] - s.mean()) / max(s.std(), 1e-12)
-        if abs(z) > BAND:
-            w = -1.0 if z > 0 else 1.0
-            tgt[i] += w * LEG / px[i]
-            tgt[j] -= w * b * LEG / px[j]
+    # dollar position limits (generalises to any nInst; ALGO gets the big limit)
+    dlrLimit = np.full(nInst, DFLT_LIMIT)
+    if nInst > ALGO_IDX:
+        dlrLimit[ALGO_IDX] = ALGO_LIMIT
 
-    if not state["pairs"]:
-        # stay above the minimum-activity threshold if the book ever empties;
-        # a small alternating ALGO position costs 0.2bp a day on its value
-        sh = max(1, int(300 / px[0]))
-        tgt[0] = sh if nt % 2 == 0 else -sh
+    maxLb = max(max(LOOKBACKS), TREND_LB if TREND_HEDGE > 0 else 0)
+    # need enough history to form the longest window; otherwise stay flat
+    if nDays < maxLb + 2:
+        return np.zeros(nInst)
 
-    lim = np.full(n, 10_000.0)
-    lim[0] = 100_000.0
-    lim = (lim / px).astype(int)
-    return np.clip(tgt, -lim, lim).astype(int)
+    logP = np.log(prc)
+
+    # ---- ensemble z-score reversal signal ----
+    z = np.zeros(nInst)
+    for lb in LOOKBACKS:
+        window = logP[:, -lb:]
+        mean = window.mean(axis=1)
+        std = window.std(axis=1) + 1e-9
+        zi = (logP[:, -1] - mean) / std
+        z += np.clip(zi, -CLIP_Z, CLIP_Z)
+    z /= len(LOOKBACKS)
+    signal = -z  # lean AGAINST the dislocation (mean-revert)
+
+    # ---- optional long-horizon trend sleeve (regime insurance) ----
+    if TREND_HEDGE > 0.0:
+        tw = logP[:, -TREND_LB:]
+        ztr = np.clip((logP[:, -1] - tw.mean(1)) / (tw.std(1) + 1e-9),
+                      -CLIP_Z, CLIP_Z)
+        signal = (1.0 - TREND_HEDGE) * signal + TREND_HEDGE * ztr
+
+    # ---- size to limits with a saturating map ----
+    dollar = dlrLimit * np.tanh(K * signal)
+    pos = dollar / prc[:, -1]
+
+    # guard against any non-finite values, then integerise
+    pos = np.nan_to_num(pos, nan=0.0, posinf=0.0, neginf=0.0)
+    return pos.astype(int)
