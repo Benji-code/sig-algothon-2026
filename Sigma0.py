@@ -1,16 +1,12 @@
-# Sigma6.1 - Algothon 2026
-# Sigma6 (two-factor lead-lag + reversion consensus book) with two inherited
-# constants re-tuned for the current chassis: core signal window WIN 350->450
-# and gray vote band 0.20->0.25. Both were optimal on the Sigma2/Sigma3
-# architecture and went stale through the consensus-deployment and lead-lag
-# blend changes; the re-tune dominates Sigma6 on late folds (+16), holdout
-# (+36, scores 611/653/681/689) AND the official window (645.9 vs 596.7)
-# simultaneously - a plateau shift, not an in-sample cherry-pick. Broad
-# plateau: WIN 400-500 x GBAND .25-.30 all dominate the old constants.
-#
-# Lineage: Sigma0 326 -> Sigma1 374.6 -> Sigma2 419.8 -> Sigma3 488.7 ->
-# Sigma4 497.9 -> Sigma5 557.4 -> Sigma6 596.7 -> Sigma6.1 645.9.
-#
+# Sigma7p - Algothon 2026 (probe)
+# Seeds + lead-lag ONLY: gray sleeve off (GLO=-9), singles off, throttle off.
+# Purpose: the live isolation of the lead-lag family. Seven seed pairs cover
+# 14 names; the L-matrix votes deploy the rest at full caps. Its live print
+# is the direct measurement of LL alpha on the hidden window:
+#   ~500+  -> LL alive, anchors Sigma7 at full weight
+#   ~350-450 -> diluted but real, reduced weight
+#   ~150-250 -> LL died with the regime; cut from Sigma7
+# Local reference: official 579.3 (in-file, where LL demonstrably worked).
 # numpy only.
 
 import numpy as np
@@ -18,19 +14,21 @@ import numpy as np
 LEG=10_000
 BAND=0.25; SBAND=0.25; GBANDV=0.25
 RESCAN=20; WARMUP=120
-T_SINGLE=-3.1; T_KEEP=-2.5; KEEPR=-1.0; MAX_SNG=6
-WIN=450; EWMA_HL=20.0; GLO=-2.6; GREC=-2.0
+T_SINGLE=-3.1; T_KEEP=-2.5; KEEPR=-1.0; MAX_SNG=0
+WIN=450; EWMA_HL=20.0; GLO=-9.0; GREC=-2.0
 LLW=1.5
 NFAC=2        # residualization factors for LL (1 = ALGO only, 2 = +PC1)
 RVW=0.0        # reversal stream weight (raw 20d)
 RVK=20
 PNC=1.0        # LL+reversal vote multiplier on reversion-core names
-BANDIT=0    # trailing window for arm weights (0 = off)
+BANDIT=0
+GTHR=0      # gray throttle: trailing causal-PnL window (0=off)    # trailing window for arm weights (0 = off)
 
 SEED_PAIRS=[(10,46),(1,20),(13,45),(8,27),(49,50),(25,37),(7,40)]
-SEED_SINGLES=[35,33,18,44]
+SEED_SINGLES=[]
 state={"scanned":-1_000_000,"units":[],"gunits":[],"rbeta":None,"L":None,
-       "core":set(),"prev_signs":None,"prev_px":None,"apnl":{"R":[],"L":[],"V":[]}}
+       "core":set(),"prev_signs":None,"prev_px":None,"apnl":{"R":[],"L":[],"V":[]},
+       "gprev":None,"gpx":None,"gpnl":[]}
 
 def ar1_t(s):
     s=s-s.mean(axis=1,keepdims=True)
@@ -135,12 +133,24 @@ def getMyPosition(prcSoFar):
             z=(zi[-1]-zi.mean())/zstd(zi)
             f=0.0 if abs(z)<=SBAND else (-1.0 if z>0 else 1.0)
             vR[i]+=f*LEG
+    vG=np.zeros(n)
     for i,j in state["gunits"]:
         b,c=np.polyfit(logp[j],logp[i],1)
         s=logp[i]-b*logp[j]-c
         z=(s[-1]-s.mean())/max(s.std(),1e-12)
         f=0.0 if abs(z)<=GBANDV else (-1.0 if z>0 else 1.0)
-        vR[i]+=f*LEG; vR[j]-=f*b*LEG
+        vG[i]+=f*LEG; vG[j]-=f*b*LEG
+    gm=1.0
+    if GTHR>0:
+        if state["gprev"] is not None:
+            ret=px/state["gpx"]-1.0
+            state["gpnl"].append(float(10_000*np.sum(state["gprev"][1:]*ret[1:])))
+        state["gprev"]=np.sign(vG); state["gpx"]=px.copy()
+        h=state["gpnl"][-GTHR:]
+        if len(h)>=40:
+            m=np.mean(h); se=np.std(h)/np.sqrt(len(h))+1e-9
+            gm=float(np.clip(m/(2*se),0.0,1.0))
+    vR+=gm*vG
     sig=zres[:,-1] @ state["L"]
     ssd=sig[1:].std()
     if ssd>1e-12:
