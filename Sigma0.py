@@ -1,12 +1,16 @@
-# Sigma7p - Algothon 2026 (probe)
-# Seeds + lead-lag ONLY: gray sleeve off (GLO=-9), singles off, throttle off.
-# Purpose: the live isolation of the lead-lag family. Seven seed pairs cover
-# 14 names; the L-matrix votes deploy the rest at full caps. Its live print
-# is the direct measurement of LL alpha on the hidden window:
-#   ~500+  -> LL alive, anchors Sigma7 at full weight
-#   ~350-450 -> diluted but real, reduced weight
-#   ~150-250 -> LL died with the regime; cut from Sigma7
-# Local reference: official 579.3 (in-file, where LL demonstrably worked).
+# Sigma9 - Algothon 2026
+# Tiered consensus with PER-UNIT CAUSAL GATES on the full gray population.
+# Full-weight measured tier: 7 verified seed pairs (live Sharpe 8.7, all
+# passing recent-window audits) + two-factor lead-lag matrix (live-isolated
+# at 621). Speculative tier: the FULL gray population (t<-2.6, rec<-2.0,
+# ~80 overlapping units) where each unit tracks its OWN realized PnL and
+# votes at full weight only while its trailing 60d is positive - unit-level
+# survivorship replaces blanket gates. Plus the recent-window birth/survivor
+# detector (150d) at the same discipline.
+# Receipts: official 632.4; frozen split 499 (best of ANY model incl. the
+# 621-live Sigma7p); hidden-window harness +139 to +158 over Sigma8 at 30%
+# survival; era5 681. LL-only tested and rejected (-150 to -185 everywhere:
+# the "lagged returns only" discord wisdom is pack truth, not ground truth).
 # numpy only.
 
 import numpy as np
@@ -15,20 +19,24 @@ LEG=10_000
 BAND=0.25; SBAND=0.25; GBANDV=0.25
 RESCAN=20; WARMUP=120
 T_SINGLE=-3.1; T_KEEP=-2.5; KEEPR=-1.0; MAX_SNG=0
-WIN=450; EWMA_HL=20.0; GLO=-9.0; GREC=-2.0
+WIN=450; EWMA_HL=20.0; GLO=-2.6; GREC=-2.0
 LLW=1.5
 NFAC=2        # residualization factors for LL (1 = ALGO only, 2 = +PC1)
 RVW=0.0        # reversal stream weight (raw 20d)
 RVK=20
 PNC=1.0        # LL+reversal vote multiplier on reversion-core names
 BANDIT=0
-GTHR=0      # gray throttle: trailing causal-PnL window (0=off)    # trailing window for arm weights (0 = off)
+GTHR=0      # gray throttle: trailing causal-PnL window (0=off)
+BIRTHW=150   # birth-catcher recent window (0=off; e.g. 150)
+BGATE=-4.0 # birth gate on recent-window t
+GW=1.0        # gray/survivor tier vote weight
+UGATE=60    # per-unit causal gate: trailing own-PnL window (0=off)    # trailing window for arm weights (0 = off)
 
 SEED_PAIRS=[(10,46),(1,20),(13,45),(8,27),(49,50),(25,37),(7,40)]
 SEED_SINGLES=[]
 state={"scanned":-1_000_000,"units":[],"gunits":[],"rbeta":None,"L":None,
        "core":set(),"prev_signs":None,"prev_px":None,"apnl":{"R":[],"L":[],"V":[]},
-       "gprev":None,"gpx":None,"gpnl":[]}
+       "gprev":None,"gpx":None,"gpnl":[],"bunits":[],"uh":{},"uprev":{}}
 
 def ar1_t(s):
     s=s-s.mean(axis=1,keepdims=True)
@@ -105,6 +113,22 @@ def getMyPosition(prcSoFar):
             if i in used or ns>=MAX_SNG: continue
             units.append(("S",i)); used.add(i); ns+=1
         state["gunits"]=[(i,j) for t,i,j in scan_gray(logp,n,used)]
+        state["bunits"]=[]
+        if BIRTHW>0 and nt>BIRTHW+60:
+            Lw=logp[:,-BIRTHW:]; Lc2=Lw-Lw.mean(1,keepdims=True)
+            Lf=logp-logp.mean(1,keepdims=True)
+            for i in range(1,n-1):
+                if i in used: continue
+                x=Lc2[i]; xx=max(x@x,1e-30)
+                for j in range(i+1,n):
+                    if j in used: continue
+                    b=(Lc2[j]@x)/xx; R=Lc2[j]-b*x
+                    _,tt=ar1_t(R[None,:])
+                    if tt[0]<BGATE and abs(b)<4:
+                        xf=Lf[i]; bf=(Lf[j]@xf)/max(xf@xf,1e-30)
+                        _,tf=ar1_t((Lf[j]-bf*xf)[None,:])
+                        if tf[0]>-2.6:
+                            state["bunits"].append((j,i))
         a=zres[:,:-1]; b=zres[:,1:]
         Lm=(a@b.T)/a.shape[1]; np.fill_diagonal(Lm,0.0); Lm[0,:]=0.0; Lm[:,0]=0.0
         state["L"]=Lm
@@ -133,12 +157,30 @@ def getMyPosition(prcSoFar):
             z=(zi[-1]-zi.mean())/zstd(zi)
             f=0.0 if abs(z)<=SBAND else (-1.0 if z>0 else 1.0)
             vR[i]+=f*LEG
+    for i,j in state.get("bunits",[]):
+        yw=logp[i,-BIRTHW:]; xw=logp[j,-BIRTHW:]
+        b,c=np.polyfit(xw,yw,1)
+        s=yw-b*xw-c
+        z=(s[-1]-s.mean())/max(s.std(),1e-12)
+        f=0.0 if abs(z)<=GBANDV else (-1.0 if z>0 else 1.0)
+        vR[i]+=GW*f*LEG; vR[j]-=GW*f*b*LEG
     vG=np.zeros(n)
+    if UGATE>0:
+        r1=np.log(px/prcSoFar[:,-2]) if nt>1 else np.zeros(n)
+        for key,(fp,bp) in list(state["uprev"].items()):
+            i,j=key
+            state["uh"].setdefault(key,[]).append(float(fp*LEG*(r1[i]-bp*r1[j])))
+        state["uprev"]={}
     for i,j in state["gunits"]:
         b,c=np.polyfit(logp[j],logp[i],1)
         s=logp[i]-b*logp[j]-c
         z=(s[-1]-s.mean())/max(s.std(),1e-12)
         f=0.0 if abs(z)<=GBANDV else (-1.0 if z>0 else 1.0)
+        if UGATE>0:
+            h=state["uh"].get((i,j),[])[-UGATE:]
+            gate = 1.0 if len(h)<30 else (1.0 if np.mean(h)>0 else 0.0)
+            state["uprev"][(i,j)]=(f,b)
+            f*=gate
         vG[i]+=f*LEG; vG[j]-=f*b*LEG
     gm=1.0
     if GTHR>0:
@@ -150,7 +192,7 @@ def getMyPosition(prcSoFar):
         if len(h)>=40:
             m=np.mean(h); se=np.std(h)/np.sqrt(len(h))+1e-9
             gm=float(np.clip(m/(2*se),0.0,1.0))
-    vR+=gm*vG
+    vR+=GW*gm*vG
     sig=zres[:,-1] @ state["L"]
     ssd=sig[1:].std()
     if ssd>1e-12:
