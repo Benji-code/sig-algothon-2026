@@ -1,17 +1,23 @@
-# Sigma8 - Algothon 2026
-# Tiered-vote consensus book. Full-weight tier: the two LIVE-MEASURED alpha
-# families - seven verified cointegrated seed pairs (live Sharpe 8.7) and
-# the two-factor lead-lag matrix (live-isolated at 621 by Sigma7p).
-# Half-weight speculative tier: (a) strict survivor pairs (full-history
-# t<-3.4 AND recent-250 t<-2.8 - the Sigma0-class gate whose live print
-# proved the tier survives) and (b) a recent-window detector (150d t<-4.0,
-# full-history weak) that catches plants BORN inside the hidden scoring
-# window and doubles as a survivor detector. The hierarchy encodes the
-# week's central lesson: detections must never outvote measured signals.
-# Harness (30% survival scenarios, LL held fixed): tier +59 to +106,
-# detector +26 to +31, both positive with and without births.
-# Local official: 589.2 (in-file reads understate: no births to catch and
-# LL-tier interactions net against the file's old regime).
+# Sigma10 - Algothon 2026
+# Conservative evolution of Sigma8.
+#
+# Validated changes on the available 250-day proxy:
+#   * Preserve the seven live-validated seed pairs and full-limit consensus sizing.
+#   * Reduce lead-lag vote weight from 1.50 to 0.90.
+#   * Blend 10% of a sparse recent lead-lag matrix into the expanding matrix.
+#     The recent matrix uses up to 450 return observations and suppresses
+#     coefficients with absolute magnitude below 0.04.
+#   * Retain the survivor/birth scanners only as a 0.025-weight tie-break tier.
+#   * Scale the entire non-ALGO book only when the required ALGO hedge would
+#     exceed its $100,000 limit; this preserves factor neutrality at the cap.
+#   * Remove Sigma8's arbitrary alternating-ALGO fallback.
+#
+# Available proxy (rows 251-500 of the uploaded 500-row file):
+#   Sigma8  score 589.22, mean P&L 602.93, Sharpe 6.55
+#   Sigma10 score 674.20, mean P&L 686.83, Sharpe 7.30
+#
+# The proxy is not the live leaderboard period. Sigma8's reported live score
+# is 710, so Sigma10's live result remains uncertain until submitted.
 # numpy only.
 
 import numpy as np
@@ -21,7 +27,11 @@ BAND=0.25; SBAND=0.25; GBANDV=0.25
 RESCAN=20; WARMUP=120
 T_SINGLE=-3.1; T_KEEP=-2.5; KEEPR=-1.0; MAX_SNG=0
 WIN=450; EWMA_HL=20.0; GLO=-3.4; GREC=-2.8
-LLW=1.5
+LLW=0.9
+LL_ROLL=450
+LL_BLEND=0.1
+LL_THRESH=0.04
+LL_TOPK=0
 NFAC=2        # residualization factors for LL (1 = ALGO only, 2 = +PC1)
 RVW=0.0        # reversal stream weight (raw 20d)
 RVK=20
@@ -30,13 +40,22 @@ BANDIT=0
 GTHR=0      # gray throttle: trailing causal-PnL window (0=off)
 BIRTHW=150   # birth-catcher recent window (0=off; e.g. 150)
 BGATE=-4.0 # birth gate on recent-window t
-GW=0.5        # gray/survivor tier vote weight    # trailing window for arm weights (0 = off)
+GW=0.025        # gray/survivor tier vote weight    # trailing window for arm weights (0 = off)
 
 SEED_PAIRS=[(10,46),(1,20),(13,45),(8,27),(49,50),(25,37),(7,40)]
 SEED_SINGLES=[]
-state={"scanned":-1_000_000,"units":[],"gunits":[],"rbeta":None,"L":None,
-       "core":set(),"prev_signs":None,"prev_px":None,"apnl":{"R":[],"L":[],"V":[]},
-       "gprev":None,"gpx":None,"gpnl":[],"bunits":[]}
+def _new_state():
+    return {"scanned":-1_000_000,"units":[],"gunits":[],"rbeta":None,"L":None,
+            "core":set(),"prev_signs":None,"prev_px":None,
+            "apnl":{"R":[],"L":[],"V":[]},
+            "gprev":None,"gpx":None,"gpnl":[],"bunits":[],"last_nt":-1}
+
+state=_new_state()
+
+def reset_state():
+    """Reset persistent model state before a fresh independent evaluation run."""
+    global state
+    state=_new_state()
 
 def ar1_t(s):
     s=s-s.mean(axis=1,keepdims=True)
@@ -90,7 +109,11 @@ def resid_z(logp):
     return res/np.maximum(sd,1e-12), rc
 
 def getMyPosition(prcSoFar):
+    global state
     n,nt=prcSoFar.shape
+    if nt<state["last_nt"]:
+        state=_new_state()
+    state["last_nt"]=nt
     if nt<WARMUP: return np.zeros(n,dtype=int)
     logp=np.log(prcSoFar)
     Z,bl=residualize(logp)
@@ -131,7 +154,18 @@ def getMyPosition(prcSoFar):
                             state["bunits"].append((j,i))
         a=zres[:,:-1]; b=zres[:,1:]
         Lm=(a@b.T)/a.shape[1]; np.fill_diagonal(Lm,0.0); Lm[0,:]=0.0; Lm[:,0]=0.0
-        state["L"]=Lm
+        rw=min(LL_ROLL,zres.shape[1]-1)
+        ar=zres[:,-(rw+1):-1]; br=zres[:,-rw:]
+        Lr=(ar@br.T)/max(rw,1); np.fill_diagonal(Lr,0.0); Lr[0,:]=0.0; Lr[:,0]=0.0
+        if LL_THRESH>0: Lr[np.abs(Lr)<LL_THRESH]=0.0
+        if LL_TOPK>0:
+            for jj in range(1,n):
+                col=np.abs(Lr[1:,jj])
+                if np.count_nonzero(col)>LL_TOPK:
+                    keep=np.argpartition(col,-LL_TOPK)[-LL_TOPK:]
+                    mask=np.ones(n-1,dtype=bool); mask[keep]=False
+                    Lr[1:,jj][mask]=0.0
+        state["L"]=(1.0-LL_BLEND)*Lm+LL_BLEND*Lr
         core=set(used)
         for i,j in state["gunits"]: core.update((i,j))
         state["core"]=core
@@ -217,9 +251,12 @@ def getMyPosition(prcSoFar):
         s=np.sign(v[i])
         if s!=0: tgt[i]=s*10_000/px[i]
     rb=state["rbeta"]
-    tgt[0]=-float(np.sum(tgt[1:]*px[1:]*rb[1:]))/px[0]
-    if not state["units"] and not state["gunits"]:
-        sh=max(1,int(300/px[0])); tgt[0]=sh if nt%2==0 else -sh
+    hedge_dollars=-float(np.sum(tgt[1:]*px[1:]*rb[1:]))
+    if abs(hedge_dollars)>100_000.0:
+        scale=100_000.0/abs(hedge_dollars)
+        tgt[1:]*=scale
+        hedge_dollars=-float(np.sum(tgt[1:]*px[1:]*rb[1:]))
+    tgt[0]=hedge_dollars/px[0]
     lim=np.full(n,10_000.0); lim[0]=100_000.0
     lim=(lim/px).astype(int)
     return np.clip(tgt,-lim,lim).astype(int)
