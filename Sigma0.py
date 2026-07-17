@@ -1,23 +1,20 @@
-# Sigma10 - Algothon 2026
-# Conservative evolution of Sigma8.
+# Sigma10 Hybrid - Algothon 2026
 #
-# Validated changes on the available 250-day proxy:
-#   * Preserve the seven live-validated seed pairs and full-limit consensus sizing.
-#   * Reduce lead-lag vote weight from 1.50 to 0.90.
-#   * Blend 10% of a sparse recent lead-lag matrix into the expanding matrix.
-#     The recent matrix uses up to 450 return observations and suppresses
-#     coefficients with absolute magnitude below 0.04.
-#   * Retain the survivor/birth scanners only as a 0.025-weight tie-break tier.
-#   * Scale the entire non-ALGO book only when the required ALGO hedge would
-#     exceed its $100,000 limit; this preserves factor neutrality at the cap.
-#   * Remove Sigma8's arbitrary alternating-ALGO fallback.
+# Purpose:
+#   Preserve Sigma8's live-validated sleeve hierarchy while retaining
+#   Sigma10's small sparse recent lead-lag overlay. This version was chosen
+#   for cross-regime robustness, not for the best score on days 251-500.
 #
-# Available proxy (rows 251-500 of the uploaded 500-row file):
-#   Sigma8  score 589.22, mean P&L 602.93, Sharpe 6.55
-#   Sigma10 score 674.20, mean P&L 686.83, Sharpe 7.30
+# Active design:
+#   * Seven fixed seed-pair candidates with causal survival checks.
+#   * Gray/survivor and birth pair tier restored to Sigma8 weight (GW=0.5).
+#   * Lead-lag weight set between Sigma8 and Sigma10 (LLW=1.3).
+#   * 90% expanding + 10% sparse recent lead-lag matrix.
+#   * Full-limit consensus sizing retained.
+#   * ALGO hedge is clipped at its instrument limit; the non-ALGO book is not
+#     routinely rescaled when the hedge estimate exceeds that limit.
+#   * Arbitrary alternating-ALGO fallback remains removed.
 #
-# The proxy is not the live leaderboard period. Sigma8's reported live score
-# is 710, so Sigma10's live result remains uncertain until submitted.
 # numpy only.
 
 import numpy as np
@@ -27,7 +24,7 @@ BAND=0.25; SBAND=0.25; GBANDV=0.25
 RESCAN=20; WARMUP=120
 T_SINGLE=-3.1; T_KEEP=-2.5; KEEPR=-1.0; MAX_SNG=0
 WIN=450; EWMA_HL=20.0; GLO=-3.4; GREC=-2.8
-LLW=0.9
+LLW=1.3
 LL_ROLL=450
 LL_BLEND=0.1
 LL_THRESH=0.04
@@ -40,7 +37,7 @@ BANDIT=0
 GTHR=0      # gray throttle: trailing causal-PnL window (0=off)
 BIRTHW=150   # birth-catcher recent window (0=off; e.g. 150)
 BGATE=-4.0 # birth gate on recent-window t
-GW=0.025        # gray/survivor tier vote weight    # trailing window for arm weights (0 = off)
+GW=0.5        # gray/survivor tier vote weight    # trailing window for arm weights (0 = off)
 
 SEED_PAIRS=[(10,46),(1,20),(13,45),(8,27),(49,50),(25,37),(7,40)]
 SEED_SINGLES=[]
@@ -252,10 +249,6 @@ def getMyPosition(prcSoFar):
         if s!=0: tgt[i]=s*10_000/px[i]
     rb=state["rbeta"]
     hedge_dollars=-float(np.sum(tgt[1:]*px[1:]*rb[1:]))
-    if abs(hedge_dollars)>100_000.0:
-        scale=100_000.0/abs(hedge_dollars)
-        tgt[1:]*=scale
-        hedge_dollars=-float(np.sum(tgt[1:]*px[1:]*rb[1:]))
     tgt[0]=hedge_dollars/px[0]
     lim=np.full(n,10_000.0); lim[0]=100_000.0
     lim=(lim/px).astype(int)
