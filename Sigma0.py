@@ -1,30 +1,3 @@
-# Sigma17 - Algothon 2026
-# Sigma16 (same name book, birth gate -3.5, hedge off) with the $100k ALGO cap
-# SPLIT 50/50 between two independent signals:
-#   (a) plain 5-day ALGO reversal    -- fade ALGO's own move
-#   (b) RELATIVE reversal, horizon 6 -- fade ALGO's move vs the equal-weight
-#       non-ALGO cross-section.  Adapted from an external model (Zigma11).
-#
-# Why (b): standalone it is positive on BOTH windows across a broad horizon
-# plateau, unlike (a), whose underlying property has inverted.
-#   horizon        3      4      5      6     (PnL/day, $100k cap)
-#   251-500      +74.0  +51.6  +16.3  +50.6
-#   501-750      +46.3  +40.1 +112.4 +107.9
-#   plain 5d reversal: +156.0 early, +11.5 recent.  ALGO lag-1 autocorrelation
-#   flipped -0.094 -> +0.042; all nine horizons of (a) now lose, avg -54/day.
-#
-# The blend weight is flat across 0.4-0.7 (avg 770.1/770.3/770.3/770.1), so 0.5
-# is taken from the middle of a plateau, not a tuned optimum.
-#
-# vs Sigma16:  251-500  748 -> 698   |  501-750  787 -> 842
-#              Sharpe  7.20 -> 8.44  |  worst 50-day block  415 -> 608
-#
-# Deliberately NOT taken from Zigma11: its sparse-ridge disagreement filter
-# (removing it improves that model) and its 6-day residual override (its
-# horizon and z-threshold both sit on sharp single peaks, losing 23-49 points
-# one step either way).
-# numpy only.
-
 import numpy as np
 LEG = 10_000
 BAND = 0.25
@@ -55,8 +28,6 @@ BIRTHW = 150
 BGATE = -3.5
 GW = 0.5
 ALGO_REV_HORIZON = 5
-RELREV_HORIZON = 6
-RELREV_W = 0.5
 ALGO_REV_DOLLARS = 100_000.0
 ALGO_HEDGE_WEIGHT = 0.0
 DIAG_MAX_OBS = 12_000
@@ -252,12 +223,9 @@ def getMyPosition(prcSoFar):
     beta=state["rbeta"]
     if beta is None: beta=np.zeros(n)
     hedge_dollars=-float(np.sum(target[1:]*px[1:]*beta[1:]))
-    _h=RELREV_HORIZON
-    if logp.shape[1]>_h+3:
-        _ar=np.diff(logp,axis=1); _mna=_ar[1:].mean(axis=0)
-        _rel=-((float(logp[0,-1])-float(logp[0,-1-_h]))-float(_mna[-_h:].sum()))
+    if logp.shape[1]>ALGO_REV_HORIZON:
         algo_move=float(logp[0,-1])-float(logp[0,-1-ALGO_REV_HORIZON]);reversal_sign=-float(np.sign(algo_move))
-        reversal_dollars=ALGO_REV_DOLLARS*(RELREV_W*float(np.sign(_rel))+(1.0-RELREV_W)*reversal_sign)
+        reversal_dollars=ALGO_REV_DOLLARS*reversal_sign
     else: reversal_dollars=0.0
     algo_dollars=ALGO_HEDGE_WEIGHT*hedge_dollars+reversal_dollars;algo_dollars=float(np.clip(algo_dollars,-100_000.0,100_000.0))
     target[0]=algo_dollars/px[0]

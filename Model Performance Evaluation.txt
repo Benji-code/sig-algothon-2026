@@ -41,3 +41,9 @@ Sigma17
 	- Days 251-500: 698
 	- Days 501-750: 842
 	- Days 751-1000:
+
+Sigma18
+- Performance:
+	- Days 251-500: 822
+	- Days 501-750: 825
+	- Days 751-1000:
