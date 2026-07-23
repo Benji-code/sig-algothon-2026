@@ -1,0 +1,88 @@
+Model List
+Sigma7p
+- Architecture:
+	- Seed pairs only (7 hardcoded cointegrated pairs, indices fixed from early discovery)
+	- 2-factor lead-lag matrix (dense, all 50x50 relationships)
+- Exposure:
+	- ALGO used as a pure beta hedge, no market exposure
+	- Beta-neutral
+	- No directional ALGO bet
+- Performance:
+	- Days 251-500: 626
+	- Days 501-750: 621
+	- Days 751-1000:
+*Essentially the true naked core of the Sigma model line.
+
+Sigma8
+- - Architecture:
+    - 7 seed pairs (same as 7p)
+    - 2-factor lead-lag matrix (dense)
+    - Half-weight gray/survivor tier added (GW=0.5, strict gate: full-history t<-3.4 AND recent-250 t<-2.8)
+    - Half-weight birth-catcher added (150-day recent window, t<-4.0, catches pairs born inside the scoring window)
+- Exposure:
+    - ALGO used as a pure beta hedge, no market exposure
+    - Beta-neutral, no directional ALGO bet
+- Performance:
+    - Days 251-500: 589
+    - Days 501-750: 706
+    - Days 751-1000:
+*First "tiered consensus" model; adds the gray + birth speculative tier on top of 7p's naked core, still fully hedge exposure.
+
+SigmaB10 (alternatively Sigma10 Benji Ver.)
+- Architecture:
+	- Same seed pairs + gray tier (GW=0.5) + birth-catcher (150d, t<-4.0) as Sigma8
+	- Lead-lag matrix now a 90%/10% blend of expanding-history and recent-450-day windows, with small-signal thresholding
+	- New tail-regime diagnostics: pair and lead-lag votes can go "sticky" (hold rather than flatten) when a fat-tail regime is detected
+- Exposure:
+	- ALGO hedge turned OFF (ALGO_HEDGE_WEIGHT=0)
+	- ALGO slot instead carries a directional bet: fade its own trailing 5-day move, full $100k cap
+- Performance:
+	- Days 251-500: 745
+	- Days 501-750: 737
+	- Days 751-1000: 
+*The point where ALGO stops only hedging, also becomes trading sleeve
+
+Sigma10X
+- Architecture:
+	- Identical chassis to Sigma10 (same gray/birth/lead-lag config)
+- Exposure:
+	- No reversal bet (ALGO_REV_DOLLARS=0)
+	- Hedge weight set to -1.5 instead of canceling the book's incidental ALGO beta exposure, this amplifies that same exposure 1.5x in the same direction ("anti-hedge"/leverage)
+- Performance:
+	- Days 251-500: 548
+	- Days 501-750: 806
+	- Days 751-1000:
+*Old notes confirmed this is trading a measured zero-mean, non-persistent term (sign flips between windows, block PnL doesn't autocorrelate). Its a coinflip, not real alpha. (Note: the model-family table elsewhere mislabels this row "2.5x"; the actual saved coefficient and the prose both say 1.5x, flagging the inconsistency*
+
+Sigma10FB
+- Architecture:
+	- Same chassis as Sigma10, birth gate loosened from -4.0 to -3.5
+- Exposure:
+	- Both reversal dollars and hedge weight are zero. ALGO slot is completely flat/untraded
+- Performance:
+	- Days 251-500: 598
+	- Days 501-750: 786
+	- Days 751-1000:
+*Isolates what the name-book alone (pairs, gray tier, birth catcher, lead-lag) scores with instrument 0 doing nothing at all.
+
+Sigma16
+- Architecture:
+	- Same chassis as Sigma10FB (birth gate -3.5)
+- Exposure:
+	- Plain 5-day ALGO reversal restored (same mechanism as SigmaB10), hedge still off
+- Performance:
+	- Days 251-500: 748
+	- Days 501-750: 787
+	- Days 751-1000:
+*SigmaB10's reversal bet grafted onto the looser birth gate. This is the version the old notes flagged as never actually saved to a file, so the copy in Model List now is a firsthand reconstruction, not an assumption.
+
+Sigma17
+- Architecture:
+	- Same chassis as Sigma16 (birth gate -3.5)
+- Exposure:
+	- ALGO slot split 50/50 between two signals: plain 5-day reversal (as in SigmaB10/16) and a "relative reversal" at horizon 6, fading ALGO's 6-day move measured against the equal-weight non-ALGO basket, adapted from Zigma11
+- Performance:
+	- Days 251-500: 698
+	- Days 501-750: 842
+	- Days 751-1000:
+*Currently the model sitting in Sigma0.py as the live submission. Per the old notes, it's the worst live scorer (523.44) of the three submitted so far, with the regression against backtest never diagnosed.
