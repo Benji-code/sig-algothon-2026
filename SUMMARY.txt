@@ -1,0 +1,28 @@
+config        official      f1      f2      f3      f4    worst     mean
+s7p              773.5   420.2   885.0   660.0   670.4    420.2    681.8
+s9_nobirth       764.1   259.4   722.6   886.8   536.0    259.4    633.8
+s9               785.1   231.6   688.7   816.3   627.6    231.6    629.9
+s9_nougate       785.1   231.6   688.7   816.3   627.6    231.6    629.9
+s9_unify         785.1   231.6   688.7   816.3   627.6    231.6    629.9
+s9_tgate         785.1   231.6   688.7   816.3   627.6    231.6    629.9
+s9_algogate      785.1   231.6   688.7   816.3   627.6    231.6    629.9
+s10              785.1   231.6   688.7   816.3   627.6    231.6    629.9
+s10_sngl         856.6   224.7   552.9   873.2   733.0    224.7    648.1
+s61              840.3   218.8   581.9   895.6   639.2    218.8    635.2
+s8               797.2   125.3   688.0   713.7   708.6    125.3    606.6
+s10_glo30        738.5    62.3   658.9   590.5   629.4     62.3    535.9
+
+WINNER (pre-registered rule): s7p
+  overrides: {'GLO': -9.0, 'MAX_SNG': 0, 'SEED_SINGLES': [], 'ALGO_MODE': 'hedge', 'PAIR_THR': 0, 'BIRTHW': 0}
+  official 773.5   worst 420.2
+argmax-official (NOT the rule): s10_sngl (856.6, worst 224.7)
+
+PBO over grid (official window): 0.343 (70 CSCV combos)
+  >0.5 = picking the IS-best config is anti-predictive; <0.25 = selection carries signal
+
+bootstrap of s7p official score: p5 602  p25 702  p50 773  p75 837  p95 934   P(<=0) 0.000
+  (path noise only; lineage selection bias not included)
+DSR K= 12: observed annSR 6.70  null-max 1.73  P(skill) 1.0000
+DSR K=500: observed annSR 6.70  null-max 3.17  P(skill) 0.9997
+
+HONESTY NOTE: seeds/constants were chosen with knowledge of this full path; folds bound overfitting, they cannot prove alpha. The hidden window is the only clean test.
