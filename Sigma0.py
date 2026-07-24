@@ -1,3 +1,30 @@
+# Sigma19 - Algothon 2026
+# Sigma18 with the birth-catcher removed (BIRTHW=0 below disables it; the
+# rest of the chassis -- seeds, gray tier, dense 2-factor lead-lag, ag-vector,
+# plain 5-day ALGO reversal -- is untouched).
+# Birth-catcher had never been isolated on its own before (see Alpha
+# Exploration Log entry 13): swept both of its parameters (BGATE, BIRTHW)
+# standalone and found no plateau on either axis -- the as-coded values were
+# lone spikes flanked by weaker or negative neighbours, i.e. no evidence of a
+# real standalone edge. Entry 17 then tested removing it from the FULL book
+# (a different question -- a weak piece can still help via diversification):
+# removing it improved BOTH windows (251-500: 821.71 -> 831.58, +9.9;
+# 501-750: 825.41 -> 836.73, +11.3), the same balanced-both-windows shape
+# that made SigmaB10 and Sigma18 trustworthy. Caveat, stated plainly rather
+# than oversold: block-level win rate was close to a coin flip (6/10 blocks
+# on 251-500, 5/10 on 501-750) -- the net aggregate favours removal on both
+# windows, but it is not the kind of broadly-dominant result the ag-vector or
+# seed pairs show. Consistent with birth-catcher being mostly noise rather
+# than a reliably harmful component.
+# The same entry also tested removing gray tier: that made 251-500 slightly
+# better but 501-750 much worse (-50.5), so gray tier was NOT removed here
+# despite also failing its own standalone isolation test (entry 16) -- its
+# marginal contribution to the full book is apparently positive even though
+# it has no edge traded alone, likely a diversification effect. Do not
+# remove gray tier without separately re-testing that specific change.
+# Not yet tested live.
+# numpy only.
+
 import numpy as np
 LEG = 10_000
 BAND = 0.25
@@ -17,37 +44,36 @@ LLW = 1.3
 LL_ROLL = 450
 LL_BLEND = 0.1
 LL_THRESH = 0.04
-LL_TOPK = 0
 NFAC = 2
-RVW = 0.0
-RVK = 20
-PNC = 1.0
-BANDIT = 0
-GTHR = 0
-BIRTHW = 150
-BGATE = -3.5
+BIRTHW = 0
+BGATE = -4.0
 GW = 0.5
 ALGO_REV_HORIZON = 5
 ALGO_REV_DOLLARS = 100_000.0
 ALGO_HEDGE_WEIGHT = 0.0
-DIAG_MAX_OBS = 12_000
-DIAG_MIN_CENTRE = 120
-DIAG_MIN_TAIL = 60
-PAIR_CENTRE_MAX = 1.5
-PAIR_TAIL_MIN = 2.0
-PAIR_EXIT_Z = 0.15
-PAIR_STOP_Z = 3.0
-LL_CENTRE_MAX = 1.5
-LL_TAIL_MIN = 2.0
-LL_DEADBAND = 1.0
-LL_TANH_K = 1.0
+# --- grafted from the received Sigma7p_robust_fit500.py, validated standalone
+# before being added here (see Alpha Exploration Log): an ALGO-shock-conditional
+# lead vector. When ALGO's own contemporaneous return is an unusually large
+# shock (|z| > AG_THRESH), it directionally nudges the lead-lag forecast for
+# every other name. Ablated out of that file's 7 bundled changes, this ONE
+# piece was responsible for ~69% of its entire out-of-sample improvement;
+# everything else in that file (RESCAN/BAND/LLW retuning, matrix
+# double-centering, antisymmetric emphasis, snapshot blending) was weak,
+# inconsistent, or in BAND's case negative on its own. Neighbourhood-tested
+# clean: every threshold in [0.5,2.0] and every weight in [0.5,4.0] improved
+# both 251-500 and 501-750 vs. a no-ag-vector baseline, no exceptions.
+# Unlike that file, this version rescans (and re-freezes nothing) on the
+# same RESCAN=20 cadence as the rest of the book -- the day-500 freeze in
+# the original was an artifact of its own fit-500 experiment design, not
+# something we want in a live, always-adapting model.
+AG_THRESH = 1.0
+AG_WEIGHT = 2.0
+AG_BLEND = 0.10
 SEED_PAIRS = [(10,46),(1,20),(13,45),(8,27),(49,50),(25,37),(7,40)]
 SEED_SINGLES = []
 def _new_state():
     return {"scanned":-1_000_000,"units":[],"gunits":[],"bunits":[],"rbeta":None,"L":None,"core":set(),
-        "prev_signs":None,"prev_px":None,"apnl":{"R":[],"L":[],"V":[]},"gprev":None,"gpx":None,"gpnl":[],
-        "last_nt":-1,"pair_x":[],"pair_y":[],"ll_x":[],"ll_y":[],"pair_prev":[],"ll_prev":None,
-        "pair_tail_weak":False,"ll_tail_mode":False,"pair_state":{},"diag":{}}
+        "last_nt":-1,"ag":None,"agprev":None}
 state=_new_state()
 def reset_state():
     global state; state=_new_state()
@@ -86,60 +112,6 @@ def resid_z(logp):
         factor=weights@residual[1:];loading=residual@factor/max(float(factor@factor),1e-30)
         residual=residual-np.outer(loading,factor);residual[0]=0.0
     sd=residual.std(axis=1,keepdims=True);sd[0]=1.0;return residual/np.maximum(sd,1e-12),centred_returns
-def _slope(x,y,mask):
-    x=np.asarray(x,dtype=float);y=np.asarray(y,dtype=float);mask=np.asarray(mask,dtype=bool)
-    x=x[mask];y=y[mask];n=len(x)
-    if n<3: return np.nan,np.nan,n
-    xc=x-x.mean();den=max(float(xc@xc),1e-30);beta=float(xc@(y-y.mean()))/den
-    residual=y-y.mean()-beta*xc;se=float(np.sqrt(max(float(residual@residual),0.0)/max(n-2,1)/den))
-    return beta,se,n
-def _trim_history(key):
-    values=state[key]
-    if len(values)>DIAG_MAX_OBS: del values[:-DIAG_MAX_OBS]
-def _update_regimes():
-    px=np.asarray(state["pair_x"],dtype=float);py=np.asarray(state["pair_y"],dtype=float)
-    if len(px):
-        pc,pce,pcn=_slope(px,py,np.abs(px)<PAIR_CENTRE_MAX);pt,pte,ptn=_slope(px,py,np.abs(px)>=PAIR_TAIL_MIN)
-        pair_tail_weak=(pcn>=DIAG_MIN_CENTRE and ptn>=DIAG_MIN_TAIL and np.isfinite(pc) and np.isfinite(pt)
-            and np.isfinite(pce) and np.isfinite(pte) and pt>pc+2.0*(pce+pte))
-        state["pair_tail_weak"]=bool(pair_tail_weak)
-    lx=np.asarray(state["ll_x"],dtype=float);ly=np.asarray(state["ll_y"],dtype=float)
-    if len(lx):
-        lc,lce,lcn=_slope(lx,ly,np.abs(lx)<LL_CENTRE_MAX);lt,lte,ltn=_slope(lx,ly,np.abs(lx)>=LL_TAIL_MIN)
-        ll_tail_mode=(lcn>=DIAG_MIN_CENTRE and ltn>=DIAG_MIN_TAIL and np.isfinite(lc) and np.isfinite(lt)
-            and np.isfinite(lte) and lt>2.0*max(lc,0.0) and lt>2.0*lte)
-        state["ll_tail_mode"]=bool(ll_tail_mode)
-def _update_realized_diagnostics(logp,zres):
-    for item in state["pair_prev"]:
-        i,j,beta,intercept,spread_last,spread_sd,z_prev=item
-        if i>=logp.shape[0] or j>=logp.shape[0]: continue
-        spread_now=float(logp[i,-1])-beta*float(logp[j,-1])-intercept
-        response=(spread_now-spread_last)/max(spread_sd,1e-12)
-        if np.isfinite(z_prev) and np.isfinite(response):
-            state["pair_x"].append(float(z_prev));state["pair_y"].append(float(response))
-    state["pair_prev"]=[]
-    if state["ll_prev"] is not None and zres.shape[1]>0:
-        previous_signal=np.asarray(state["ll_prev"],dtype=float);realised=np.asarray(zres[:,-1],dtype=float)
-        if len(previous_signal)==len(realised):
-            valid=np.isfinite(previous_signal[1:])&np.isfinite(realised[1:])
-            state["ll_x"].extend(previous_signal[1:][valid].tolist());state["ll_y"].extend(realised[1:][valid].tolist())
-    state["ll_prev"]=None
-    for key in ("pair_x","pair_y","ll_x","ll_y"): _trim_history(key)
-def _pair_vote(key,z,band):
-    z=float(z)
-    if not state["pair_tail_weak"]:
-        vote=0.0 if abs(z)<=band else(-1.0 if z>0 else 1.0);state["pair_state"][key]=vote;return vote
-    previous=float(state["pair_state"].get(key,0.0));magnitude=abs(z)
-    if magnitude>=PAIR_STOP_Z: current=0.0
-    elif previous==0.0: current=0.0 if magnitude<=band else(-1.0 if z>0 else 1.0)
-    elif magnitude<=PAIR_EXIT_Z: current=0.0
-    else: current=previous
-    state["pair_state"][key]=current;return current
-def _ll_response(normalised_signal):
-    normalised_signal=np.asarray(normalised_signal,dtype=float)
-    if not state["ll_tail_mode"]: return np.clip(normalised_signal,-2.0,2.0)/2.0
-    magnitude=np.abs(normalised_signal);excess=np.maximum(magnitude-LL_DEADBAND,0.0)
-    response=np.sign(normalised_signal)*np.tanh(LL_TANH_K*excess);response[magnitude<=LL_DEADBAND]=0.0;return response
 def getMyPosition(prcSoFar):
     global state
     prices=np.asarray(prcSoFar,dtype=float);n,nt=prices.shape
@@ -147,7 +119,6 @@ def getMyPosition(prcSoFar):
     state["last_nt"]=nt
     if nt<WARMUP: return np.zeros(n,dtype=int)
     logp=np.log(np.maximum(prices,1e-12));level_residual,_=residualize(logp);zres,centred_returns=resid_z(logp)
-    _update_realized_diagnostics(logp,zres)
     if nt-state["scanned"]>=RESCAN:
         units=[];used=set()
         for i,j in SEED_PAIRS:
@@ -155,8 +126,7 @@ def getMyPosition(prcSoFar):
                 spread=(logp[i]-logp[j])[None,:];_,tstat=ar1_t(spread)
                 if tstat[0]<T_KEEP and rec_t(spread[0])<KEEPR: units.append(("P",i,j));used.update((i,j))
         _,single_t=ar1_t(level_residual[1:])
-        candidates=[(single_t[i-1],i) for i in SEED_SINGLES if(i<n and i not in used and single_t[i-1]<T_KEEP and rec_t(level_residual[i])<KEEPR)]
-        candidates+=[(single_t[k],k+1) for k in np.where(single_t<T_SINGLE)[0] if(k+1) not in used]
+        candidates=[(single_t[k],k+1) for k in np.where(single_t<T_SINGLE)[0] if(k+1) not in used]
         candidates.sort();singles_added=0
         for _,i in candidates:
             if i in used or singles_added>=MAX_SNG: continue
@@ -186,17 +156,21 @@ def getMyPosition(prcSoFar):
         state["core"]=core;state["scanned"]=nt;state["units"]=units
         returns=np.diff(logp,axis=1);returns=returns-returns.mean(axis=1,keepdims=True)
         state["rbeta"]=returns@returns[0]/max(float(returns[0]@returns[0]),1e-30)
-        _update_regimes()
+        # ALGO lead vector: does today's ALGO return predict tomorrow's
+        # residual return for each other name? Always re-fit on the full
+        # expanding history at every rescan, exactly like the rest of the book.
+        ax=centred_returns[0]/max(float(centred_returns[0].std()),1e-12)
+        ag=(zres[1:,1:] @ ax[:-1])/max(len(ax)-1,1)
+        state["agprev"]=state.get("ag");state["ag"]=ag
     px=prices[:,-1];window_slice=slice(-WIN,None)
-    vR=np.zeros(n);vL=np.zeros(n);vV=np.zeros(n);pair_prev=[]
+    vR=np.zeros(n);vL=np.zeros(n)
     for unit in state["units"]:
         if unit[0]=="P":
             _,i,j=unit
             beta,intercept=np.polyfit(logp[j][window_slice],logp[i][window_slice],1)
             spread=logp[i][window_slice]-beta*logp[j][window_slice]-intercept
             spread_sd=zstd(spread);z=(float(spread[-1])-float(spread.mean()))/spread_sd
-            vote=_pair_vote(("seed",i,j),z,BAND);vR[i]+=vote*LEG;vR[j]-=vote*beta*LEG
-            pair_prev.append((i,j,float(beta),float(intercept),float(spread[-1]),float(spread_sd),float(z)))
+            vote=0.0 if abs(z)<=BAND else(-1.0 if z>0 else 1.0);vR[i]+=vote*LEG;vR[j]-=vote*beta*LEG
         else:
             _,i=unit;residual=level_residual[i][window_slice];residual_sd=zstd(residual)
             z=(float(residual[-1])-float(residual.mean()))/residual_sd
@@ -204,19 +178,24 @@ def getMyPosition(prcSoFar):
     for i,j in state.get("bunits",[]):
         y=logp[i,-BIRTHW:];x=logp[j,-BIRTHW:];beta,intercept=np.polyfit(x,y,1)
         spread=y-beta*x-intercept;spread_sd=max(float(spread.std()),1e-12);z=(float(spread[-1])-float(spread.mean()))/spread_sd
-        vote=_pair_vote(("birth",i,j),z,GBANDV);vR[i]+=GW*vote*LEG;vR[j]-=GW*vote*beta*LEG
-        pair_prev.append((i,j,float(beta),float(intercept),float(spread[-1]),float(spread_sd),float(z)))
+        vote=0.0 if abs(z)<=GBANDV else(-1.0 if z>0 else 1.0);vR[i]+=GW*vote*LEG;vR[j]-=GW*vote*beta*LEG
     vG=np.zeros(n)
     for i,j in state["gunits"]:
         beta,intercept=np.polyfit(logp[j],logp[i],1);spread=logp[i]-beta*logp[j]-intercept
         spread_sd=max(float(spread.std()),1e-12);z=(float(spread[-1])-float(spread.mean()))/spread_sd
-        vote=_pair_vote(("gray",i,j),z,GBANDV);vG[i]+=vote*LEG;vG[j]-=vote*beta*LEG
-        pair_prev.append((i,j,float(beta),float(intercept),float(spread[-1]),float(spread_sd),float(z)))
-    state["pair_prev"]=pair_prev
+        vote=0.0 if abs(z)<=GBANDV else(-1.0 if z>0 else 1.0);vG[i]+=vote*LEG;vG[j]-=vote*beta*LEG
     vR+=GW*vG
-    raw_ll_signal=zres[:,-1]@state["L"];signal_sd=max(float(raw_ll_signal[1:].std()),1e-12);normalised_ll=raw_ll_signal/signal_sd
-    state["ll_prev"]=normalised_ll.copy();vL[1:]=LLW*LEG*_ll_response(normalised_ll)[1:]
-    combined=vR+vL+vV;target=np.zeros(n)
+    raw_ll_signal=zres[:,-1]@state["L"]
+    if state.get("ag") is not None:
+        az=float(centred_returns[0,-1])/max(float(centred_returns[0].std()),1e-12)
+        if abs(az)>AG_THRESH:
+            ag_vec=state["ag"]
+            if AG_BLEND>0 and state.get("agprev") is not None:
+                ag_vec=(1.0-AG_BLEND)*ag_vec+AG_BLEND*state["agprev"]
+            raw_ll_signal[1:]+=AG_WEIGHT*az*ag_vec
+    signal_sd=max(float(raw_ll_signal[1:].std()),1e-12);normalised_ll=raw_ll_signal/signal_sd
+    vL[1:]=LLW*LEG*(np.clip(normalised_ll,-2.0,2.0)/2.0)[1:]
+    combined=vR+vL;target=np.zeros(n)
     for i in range(1,n):
         direction=np.sign(combined[i])
         if direction!=0: target[i]=direction*LEG/px[i]

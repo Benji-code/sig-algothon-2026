@@ -47,3 +47,21 @@ Sigma18
 	- Days 251-500: 822
 	- Days 501-750: 825
 	- Days 751-1000:
+
+Zigma1_robust_774 (not promoted, kept on file only)
+- Performance:
+	- Days 251-500: 601
+	- Days 501-750: 774
+	- Days 751-1000:
+
+Zigma1_alpha_exec (not promoted, 251-500 number is contaminated, see log entry 12)
+- Performance:
+	- Days 251-500: 949 (in-sample, cutoffs overlap this window)
+	- Days 501-750: 338 (genuine out-of-sample)
+	- Days 751-1000:
+
+Sigma19
+- Performance:
+	- Days 251-500: 832
+	- Days 501-750: 837
+	- Days 751-1000:

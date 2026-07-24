@@ -98,3 +98,39 @@ Sigma18
 	- Days 501-750: 825
 	- Days 751-1000:
 *Best-by-backtest model in the lineage as of this entry, beating everything on 251-500 outright and everything but Sigma17 on 501-750 (discounted, since Sigma17's number came paired with a worse 251-500 and is the worst live performer in the lineage). Sourced from a received ChatGPT-authored model (Sigma7p_robust_fit500.py in Model List), which bundled 7 changes together; ablated to isolate this one piece as responsible for ~69% of that file's out-of-sample improvement, neighbourhood-tested clean across threshold/weight/blend (19 configs, zero exceptions), then grafted onto SigmaB10's chassis and reconfirmed clean on both windows. Not yet tested live. See Alpha Exploration Log entry 11 for the full validation chain.
+
+Zigma1_robust_774 (NOT promoted, kept on file only)
+- Architecture:
+	- Same SigmaB10-style chassis (seeds, gray tier, birth-catcher, dense lead-lag)
+	- New: a custom NIPALS-style PLS factor sleeve (8 components) predicting ALGO's next return from 10 lags of all 50 names' returns (490 raw features), gated by an embedded 40-day walk-forward validation Sharpe check (active only if recent holdout Sharpe > 1.0), refit every 50 days on full history, blending 75% into the ALGO hedge slot when active
+- Exposure:
+	- Same as SigmaB10 when the factor sleeve is inactive; ALGO hedge partially replaced by the factor-sleeve alpha bet (75% blend) when active
+- Performance:
+	- Days 251-500: 601 (own re-derivation, matches nothing claimed for this window)
+	- Days 501-750: 774 (own re-derivation, exact match to the received README's claimed 773.92)
+	- Days 751-1000:
+*Real, working file (exact score reproduction), but does not beat the current lineage on either window. Not ablated further since it does not clear the bar. See Alpha Exploration Log entry 12.
+
+Zigma1_alpha_exec (NOT promoted, headline number is contaminated)
+- Architecture:
+	- Same PLS factor sleeve as Zigma1_robust_774, but FAC_BLEND=1.0 (full blend, not 75%)
+	- Plus three additional frozen ensembles, all with training cutoffs at or before day 500: a random forest ensemble (7 forests x 80 trees, one per cutoff 200-500), a frozen ridge/AR model at 15 cutoffs (150-500), and two frozen PLS "meta" models (8- and 10-component) at 7 cutoffs each (200-500)
+	- getMyPosition also layers in a causal PnL-bandit signal-family reweight, four per-name "expert" VAR-style shock models selected by trailing realized PnL, and a final PLS overlay -- all self-adaptive but only using already-seen data (no lookahead found)
+- Exposure:
+	- Same base chassis exposure, heavily overridden per-name by whichever expert/overlay sleeve has been winning recently
+- Performance:
+	- Days 251-500: 949 (own re-derivation, exact match to the received README's claimed 949.47 -- but structurally in-sample, since most of the frozen sub-models' training cutoffs fall inside this exact window)
+	- Days 501-750: 338 (own re-derivation; the README explicitly stated this "has not been verified" -- this is the genuinely out-of-sample number, since it comes entirely after every frozen sub-model's last cutoff)
+	- Days 751-1000:
+*The 949 headline number reproduces exactly but is contaminated (same shape as Zigma10's 1249-in-sample/331-out-of-sample collapse); the real out-of-sample result (338) is a clear loss versus everything currently live. Kept on file for reference only. See Alpha Exploration Log entry 12.
+
+Sigma19
+- Architecture:
+	- Sigma18's exact chassis (seed pairs, gray tier GW=0.5, dense 2-factor lead-lag, ag-vector) with the birth-catcher removed entirely (BIRTHW=0)
+- Exposure:
+	- Same as Sigma18: ALGO hedge off, plain 5-day reversal, full $100k cap
+- Performance:
+	- Days 251-500: 832
+	- Days 501-750: 837
+	- Days 751-1000:
+*Best-by-backtest model in the lineage as of this entry, beating Sigma18 on both windows (+9.9 on 251-500, +11.3 on 501-750). Birth-catcher had already failed an isolated standalone test (log entry 13: no plateau on either of its own parameters); this entry (17) tested its marginal contribution inside the full book instead and found removing it helps both windows, though block-level win rate was close to a coin flip (6/10 and 5/10) rather than a dominant result -- consistent with birth-catcher being mostly noise rather than reliably harmful. Gray tier was tested the same way and NOT removed: despite also failing its own standalone test (entry 16), removing it hurt 501-750 by -50.5, so it stays. Not yet tested live. See Alpha Exploration Log entry 17.

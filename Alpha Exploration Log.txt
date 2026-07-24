@@ -445,3 +445,1318 @@ premise (seed-pair L-entry stability) real but unresolved on implementation,
 #10 genuinely inconclusive pending a third window, and #11 (this one) is
 the first and only fully VALIDATED positive result of the whole pass --
 promoted out of the log and into the live model lineage as Sigma18.
+
+---
+
+### 12. Zigma1 branch (third-party, ChatGPT-authored off "nothing"/scratch) -- self-reported number discrepancy found, and a contaminated-window score confirmed by direct re-derivation
+Background: a third batch, "Zigma_three_models.zip," arrived with a
+README chronology table and three files: Sigma7p_robust_fit500.py (already
+in Model List, already the source of Sigma18 -- see #11), Zigma1_robust_774.py
+("conservative 75% factor-sleeve model"), and Zigma1_alpha_exec.py ("complex
+highest-public-score model"). Same rigor standard applied as every other
+received model: verify file identity, re-score independently, do not trust
+a self-reported number without cross-checking.
+
+Step 1, file identity: Sigma7p_robust_fit500.py's SHA-256 in this new zip
+(f7238f7a...878878d) matches byte-for-byte the copy already in Model List.
+Same file, no doubt about which code produced any claimed number.
+
+Step 2, re-score that identical file directly (own harness, not Evalto):
+                        README claim         my direct re-score
+  501-750 score:            802.38                773.28
+A ~29-point (~4%) discrepancy on a file confirmed byte-identical by hash.
+Root cause not chased down (could be a harness/commission assumption
+difference on their end, or a reporting error), but the practical
+conclusion is immediate: self-reported numbers from this source cannot be
+taken at face value even when the file itself checks out, so every claim
+in this batch gets re-derived from scratch before any promotion decision.
+
+Step 3, Zigma1_robust_774.py: read in full (327 lines). Same SigmaB10-style
+chassis (seeds, gray tier, birth-catcher, dense lead-lag) plus a new "factor
+sleeve": a custom NIPALS-style PLS regression (8 components) predicting
+ALGO's next return from 10 lags of all 50 names' returns (490 raw
+features), gated by an embedded walk-forward validation Sharpe check
+(refit every 50 days on full history, only active when recent 40-day
+holdout Sharpe clears 1.0), blending 75% into the ALGO hedge slot when
+active. Scored directly:
+                        README claim         my direct re-score
+  501-750 score:             773.92                773.92
+Exact match this time, no discrepancy. Also scored 251-500 for the two-
+window bar this project applies to everything else: 600.68 (mean 614.76,
+Sharpe 6.53). Both numbers sit below the current best-by-backtest model
+(Sigma18: 821.71 / 825.41) on both windows, so even at face value this
+does not beat what's already live in the lineage. Not ablated further
+since it does not clear the bar to be worth decomposing.
+
+Step 4, Zigma1_alpha_exec.py: the largest file this project has received,
+1,094,678 bytes across 572 lines, too large for a normal read -- inspected
+via targeted grep and AST parsing instead. Shares the exact same PLS
+factor-sleeve code as 774 (identical helper functions, near-identical line
+numbers) but with FAC_BLEND=1.0 instead of 774's 0.75 (full blend, not
+partial), plus three additional frozen ensembles not present in 774:
+  - A random forest ensemble: 7 forests (one per cutoff in
+    {200,250,300,350,400,450,500}), 80 trees each, exported as raw NumPy
+    arrays (children_left/right, feature, threshold, leaf value). At
+    runtime, `_rf_predict` selects the 3 most recent cutoffs <= the current
+    day and blends them with equal weight -- causal in principle (never
+    selects a cutoff in the future), but every cutoff is <= day 500.
+  - A frozen ridge/AR model at 15 cutoffs from 150 to 500 in steps of 25,
+    predicting ALGO's own next move from multi-horizon lagged returns.
+  - Two frozen PLS "meta" models (8- and 10-component) at 7 cutoffs each
+    (200-500), taking a 41-feature vector (built from the other sleeves'
+    own outputs, agreement/dispersion stats, and global state) and used to
+    override individual name positions.
+  Checked for unsafe code (exec/eval/os/subprocess/socket/pickle/open):
+  none found -- the file is legitimately just a very large embedded data
+  blob, not a malicious payload. `getMyPosition` itself layers in several
+  more mechanisms beyond the frozen ensembles: a causal PnL-bandit reweight
+  across R/L/V signal families, four "expert" VAR-style shock-propagation
+  models selected per-name by trailing realized PnL, and a final PLS
+  overlay -- all of this state is accumulated only from data the model has
+  already seen, so no lookahead was found, but the sheer number of moving,
+  self-selecting parts makes this the most complex file in the lineage by
+  a wide margin.
+
+  Critical structural point: every one of the frozen ensembles above (RF,
+  AR, both PLS metas) has its LAST training cutoff at day 500 -- meaning
+  none of them ever retrain, and during days 501-750 the model runs
+  entirely on day-500-vintage frozen coefficients. More importantly, most
+  of the cutoffs (200 through 500) fall INSIDE the 251-500 scoring window
+  itself. Scoring this file on 251-500 therefore overlaps the exact data
+  several of its own frozen sub-models were fit on -- structurally the same
+  in-sample-contamination shape this project already proved out with
+  Zigma10 (1249 in-sample vs 331 genuinely out-of-sample, a 3.8x collapse).
+
+  Scored directly, both windows:
+                        README claim         my direct re-score
+  251-500 score:            949.47 (public)       949.47   (exact match)
+  501-750 score:      "not verified"                337.54
+  The 251-500 number matches their claim exactly, but for the structural
+  reason above it should be read as in-sample-inflated, not as evidence of
+  real edge. The number that actually matters -- 501-750, fully after every
+  frozen sub-model's training cutoff -- collapses to 337.54 (mean 365.09,
+  Sharpe 3.50). That is below every model currently in the lineage (Sigma8's
+  706, SigmaB10's 736.50, Sigma18's 825.41), and far below the 774 file's
+  773.92 on the same window.
+
+Verdict: Zigma1_robust_774.py is a real, working file (exact score match)
+but does not beat the current lineage on either window -- NOT PROMOTED, kept
+on file only. Zigma1_alpha_exec.py's headline 949.47 number is real in the
+sense that it reproduces exactly, but it is very likely a contaminated,
+in-sample number given the structural overlap between its frozen sub-
+models' cutoffs and the scoring window itself; its genuinely out-of-sample
+number (501-750) is a clear loss relative to everything currently live --
+REJECTED, kept on file for reference only, not promoted. This is now the
+second confirmed instance (after the raw 802/773 discrepancy on an
+identical file, and structurally similar to Zigma10's own in-sample/out-
+of-sample collapse) that a self-reported or headline number from a
+ChatGPT-authored branch model needed independent, full re-derivation before
+it could be trusted -- reinforcing the project's standing rule to never
+promote a model on a claimed score alone.
+
+---
+
+Addendum: stripped-piece ablation, same standard applied to algo_ridge_z
+(#7) and the ag-vector (#11). The one piece common to both new files (the
+PLS factor sleeve, 490-feature NIPALS regression predicting ALGO's next
+return, gated by a walk-forward validation Sharpe check) was isolated and
+traded standalone -- ALGO-only, full $100k cap, nothing else in the book --
+across both windows, with the gate threshold swept 0.0/0.5/1.0/1.5:
+                gate=0.0   gate=0.5   gate=1.0   gate=1.5
+  251-500 Sharpe:  -0.17      0.60       0.29       0.00
+  501-750 Sharpe:   0.66      0.66       1.43       1.43
+No plateau -- sign flips on 251-500 as the threshold moves, the same
+fitting-artifact shape as #3/#5/#8. Even at its single best setting
+(gate=1.0, 501-750 only) it is far below every effect this project has
+actually promoted (seed pairs and the ag-vector both run Sharpe 6-9;
+even the downweighted-not-killed algo_ridge_z cleared 1.09 with zero sign
+flips across 9 configs). The other pieces in Zigma1_alpha_exec.py (the
+random forest ensemble, frozen AR/ridge model, PLS meta-overlay, and
+PnL-bandit selector) were not isolated individually -- they are mutually
+dependent on each other's live trailing-PnL state, so a clean single-piece
+ablation would require rebuilding a large fraction of the file -- but this
+project already tested a comparable standalone nonlinear-ML approach
+earlier (gradient boosting on causal features, pre-dating this log) and
+found no standalone edge beyond what the linear signals already capture;
+the factor-sleeve result above is a second, independent data point
+pointing the same direction. Combined with the full bundle's genuine
+out-of-sample collapse (337.54, entry 12 above), there is no piece of
+either Zigma1 file worth grafting onto Sigma18.
+
+Net including this entry: of the three Zigma1-branch files evaluated, zero
+were promoted, and no individual piece survived a stripped-down standalone
+test either. Sigma18 (from #11's Sigma7p_robust_fit500.py ablation)
+remains the best-by-backtest model in the lineage.
+
+---
+
+### 13. Birth-catcher parameter sensitivity (BGATE, BIRTHW) -- REJECTED, no plateau on either axis
+Background: the birth-catcher (recent-150-day cointegration detector for
+newly-formed pairs, half-weight GW=0.5, currently BGATE=-4.0 / BIRTHW=150 in
+SigmaB10 and Sigma18) has never had its own parameters swept for a plateau
+in this project. Prior evidence was suggestive but indirect: Sigma10FB and
+Sigma16 loosened the gate to -3.5 and scored worse than SigmaB10 (BGATE=-4.0)
+on live/backtest comparisons, but that was a single point comparison inside
+a bundle of other differences, not an isolated sweep of this one mechanism.
+
+Method: isolated the birth-catcher scan and its GW/GBANDV z-score reversal
+trading logic standalone (nothing else in the book, same mechanism as the
+real code, just extracted). Vectorized the pairwise scan (one ar1_t call per
+anchor name across all candidate partners at once, instead of one Python
+call per pair) since the naive nested-loop version is what caused an earlier
+unattended run of this exact exploration to hang for hours without
+finishing (see below). Full causal walk-forward, in-sample only (days
+1-500), 15 x 25-day block breakdown across days 120-499, same standard as
+every other diagnostic in this log.
+
+Result, BGATE swept at BIRTHW=150 fixed:
+  BGATE=-3.0: Sharpe -0.50, mean/day  -42.89, 4/15 blocks positive
+  BGATE=-3.5: Sharpe  0.04, mean/day    2.95, 5/15 blocks positive
+  BGATE=-4.0: Sharpe  0.60, mean/day   20.01, 7/15 blocks positive  (as-coded)
+  BGATE=-4.5: Sharpe -0.89, mean/day   -5.24, 1/15 blocks positive
+  BGATE=-5.0: Sharpe  0.00, mean/day    0.00, 0/15 blocks (never fires)
+The as-coded value sits as an isolated peak between two much weaker or
+negative neighbours on both sides -- a lone spike, not a plateau. And even
+at its own best setting, Sharpe 0.60 with only 7 of 15 blocks positive
+(under half) is far below anything this project has ever promoted (seed
+pairs ~6-7, even the downweighted algo_ridge_z cleared 1.09 with 11/15
+blocks positive and zero sign flips across its own neighbourhood sweep).
+
+Result, BIRTHW swept at BGATE=-4.0 fixed:
+  BIRTHW=100: Sharpe  0.04, mean/day    1.93, 6/15 blocks positive
+  BIRTHW=125: Sharpe -1.12, mean/day  -44.76, 6/15 blocks positive
+  BIRTHW=150: Sharpe  0.60, mean/day   20.01, 7/15 blocks positive  (as-coded)
+  BIRTHW=175: Sharpe -1.11, mean/day  -29.98, 4/15 blocks positive
+  BIRTHW=200: Sharpe -1.57, mean/day  -31.51, 0/15 blocks positive
+Same exact shape on a completely independent axis: the as-coded value
+(150) is again an isolated peak between two strongly negative neighbours
+(125 and 175 both worse than -1.1 Sharpe). Two unrelated parameters both
+showing "the current setting happens to be a lone spike" is stronger
+evidence against this mechanism having a robust standalone edge than any
+single-parameter non-plateau result in this log so far.
+
+Note on the earlier failed unattended run: this exploration was first
+attempted via an autonomous scheduled task (fired at 05:15 local time,
+unattended). It read the relevant files, wrote a diagnostic, and called
+Bash to run it, then produced no further activity for over 7 hours (session
+left in a stuck "running" state, unreachable). The likely cause: the
+natural, direct translation of the real code's nested Python loop (one
+ar1_t call per (i,j) pair, ~1225 pairs per rescan, across ~19 rescans, times
+however many parameter values were being swept) is slow enough in pure
+Python that it plausibly never finished, rather than any actual bug or
+infinite loop. The vectorized rewrite used for this entry (one call per
+anchor name, not per pair) completed the full 2-parameter, 10-config sweep
+in under 4 seconds. Worth remembering for any future unattended/scheduled
+alpha-exploration task involving pairwise NxN scans: vectorize the inner
+loop first, or explicitly budget/timeout the diagnostic, since an unattended
+session has no one available to notice a hang.
+
+Verdict: REJECTED. The birth-catcher mechanism, isolated and traded on its
+own, shows no standalone edge that survives a neighbourhood check on either
+of its two main parameters -- the as-coded configuration (BGATE=-4.0,
+BIRTHW=150) is a lone spike on both axes, not a plateau. This does not
+necessarily mean the mechanism actively hurts the full SigmaB10/Sigma18
+book (it is a small half-weight overlay combined with many other signals,
+and this diagnostic tested it in isolation, not its marginal contribution
+inside the full book), but it does mean further retuning of BGATE or
+BIRTHW is very unlikely to yield a genuine improvement -- consistent with
+the existing evidence that loosening the gate to -3.5 (Sigma10FB/Sigma16)
+did not help. No candidate file built; nothing to promote.
+
+---
+
+Net including this entry: 10 of 13 ideas rejected outright (the birth-
+catcher parameter sweep is the second-cleanest rejection in this log after
+Kalman/#4, since it fails on two independent parameters rather than one),
+1 (algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying premise real but unresolved on implementation, #10
+genuinely inconclusive pending a third window, and #11 remains the only
+fully validated positive result, live in the lineage as Sigma18.
+
+---
+
+### 14. Seed-pair L-boost, take 2 (post-normalization fix) -- REJECTED, consistent negative on the confirmation window
+Background: #9 established that seed-pair L-entries carry genuine standalone
+stability (0.343 correlation / 64.3% sign agreement between independent
+halves, vs 0.098 / near-random for the general population), and that a
+forecast-quality diagnostic showed a clean unimodal plateau for a boost
+applied to those 14 entries. But the real-backtest implementation (baking
+the boost multiplicatively into the L matrix before the shared normalization
+step, `signal_sd = raw_ll_signal.std()`) scored worse on both windows,
+because the boost inflated that shared denominator and quietly shrank every
+other name's effective z-score. #9's stated fix, never tried until now: add
+the seed-pair contribution as a separate term AFTER normalization, using the
+same signal_sd purely as a units-matching scale factor, so it structurally
+cannot affect the denominator.
+
+Method: rebuilt Sigma18's exact chassis as a parametrized copy (verified
+byte-faithful: seed_boost=0.0 reproduces Sigma18's real scores exactly on
+both windows, 821.71 on 251-500 and 825.41 on 501-750, to two decimal
+places). Extracted a seed-only mask from the already-fit L matrix (just the
+14 directed seed-pair entries, zero elsewhere) and added
+`normalised_ll += seed_boost * (seed_signal / signal_sd)` after the existing
+normalization line, leaving the ag-vector and everything else untouched.
+Swept seed_boost in-sample first (251-500 only, days 501-750 untouched):
+
+  seed_boost=0.0: score 821.71 (baseline)
+  seed_boost=0.5: score 826.50
+  seed_boost=1.0: score 828.40
+  seed_boost=1.5: score 833.06
+  seed_boost=2.0: score 842.69  (peak)
+  seed_boost=3.0: score 836.18
+  seed_boost=4.0: score 801.64
+  seed_boost=6.0: score 775.92
+A genuine unimodal plateau, not a spike: smooth rise from 0 to a peak at 2.0,
+smooth decay after. Block-level check at seed_boost=2.0 vs baseline (10 x
+25-day blocks across the 251-500 window): boost wins 7 of 10 blocks, gains
+and losses both broadly distributed (no single block responsible for the
+aggregate improvement). This in-sample result alone looked like the
+cleanest candidate since the ag-vector.
+
+Confirmation on the real second window (501-750, previously untouched):
+  seed_boost=0.0: score 825.41  (baseline, exact match to Sigma18's real number)
+  seed_boost=1.0: score 789.78
+  seed_boost=1.5: score 804.76
+  seed_boost=2.0: score 806.63
+  seed_boost=2.5: score 789.84
+  seed_boost=3.0: score 776.61
+Every single tested value is WORSE than baseline on this window, including
+the in-sample-optimal 2.0 (806.63 vs 825.41, a loss of nearly 19 points).
+This is not a mixed, coin-flip-shaped result like #10's SigmaB10_ALGOagree
+(which won one window and lost the other) -- it is a consistent negative
+direction across the entire swept range on the confirmation window, which
+is stronger evidence against promoting this than a genuine 50/50 split
+would be.
+
+Verdict: REJECTED. Per the standing rule established in #10, not chasing a
+third implementation to try to force a two-window win by continuing to
+iterate against the same fixed 500 in-sample days -- that is the exact
+process that produced the B14 contamination problem in the first place.
+The underlying statistical premise from #9 (seed-pair L-entries are more
+stable than the general population) still appears real and is not
+contradicted by this result, but two different implementation attempts have
+now both failed to translate that premise into a validated two-window
+improvement. Treating this avenue as closed unless a genuinely new
+mechanism (not just a different normalization point for the same additive
+boost) or a new data window changes the picture. No candidate file built;
+nothing to promote.
+
+---
+
+Net including this entry: 11 of 14 ideas rejected outright, 1 (algo_ridge_z)
+real but weaker/more concentrated than currently weighted, #9's underlying
+statistical premise still real but two separate implementation attempts
+(#9 and this one) have both failed to validate on both windows, #10
+genuinely inconclusive pending a third window, and #11 remains the only
+fully validated positive result, live in the lineage as Sigma18.
+
+---
+
+### 15. Cross-sectional dispersion conditioning the ALGO reversal sleeve -- REJECTED at the forecast-quality stage, never reached a backtest
+Background: mirror image of the validated ag-vector (#11), which lets
+ALGO's own shock condition the 49 names' lead-lag forecast. Idea here: let
+dispersion/volatility among the 49 names condition the ALGO reversal
+sleeve's sizing instead (e.g. scale the reversal position up or down when
+cross-sectional dispersion is unusually high). Unlike the ag-vector, there
+was no strong prior on direction, so this started at the forecast-quality
+stage (does dispersion actually predict next-day reversal PnL, and which
+way) rather than jumping to a backtest, matching how #9 was first checked.
+
+Method: fully causal, in-sample only (days 1-500). Two dispersion measures
+tested: raw cross-sectional std of the 49 names' daily returns, and the
+same dispersion after removing each name's causally-estimated (expanding-
+window) ALGO beta first. Both computed from data through day t; reversal
+PnL measured from day t to day t+1, matching the real position-then-realize
+timing. Checked via pooled correlation, tercile split, and a 15-block
+(days 120-499) consistency check on whether high-dispersion days beat
+low-dispersion days within each block.
+
+Result:
+  raw cross-sectional std:          corr = -0.082, high-tercile pnl -86.8
+                                     vs low-tercile pnl 131.0, but only
+                                     7/15 blocks agree with that direction
+  ALGO-beta-residualized std:       corr = -0.110, high-tercile pnl -123.6
+                                     vs low-tercile pnl 232.1, but only
+                                     5/15 blocks agree with that direction
+Both correlations are weak (comparable to or smaller than #9's initial
+0.06-0.065, which did go on to show a genuine plateau) and, more
+importantly, block-level agreement is under half in both cases -- meaning
+the pooled-sample correlation is being driven by a handful of blocks, not a
+relationship that holds consistently over time. This is the same
+inconsistency signature that killed #3, #5, #6, and #8 at their respective
+stages.
+
+Verdict: REJECTED at the forecast-quality stage. Does not clear the bar
+this project requires before building an actual backtest (contrast with
+#9's or #1's initial diagnostics, both of which showed cleaner, more
+block-consistent signal before any model was built). No backtest built, no
+candidate file, nothing to score on either window.
+
+Follow-up check (same rejection, more variants tried before closing the
+idea out): tested a smoothed/longer-lookback version of the same-day
+dispersion measure (rolling mean over L in {1,3,5,10,20} days, then
+expanding z-score) and a dispersion measure specific to the 7 seed-pair
+spreads' z-scores (stress among the hand-verified, trustworthy relationships
+only, rather than raw dispersion across all 49 names most of which have no
+established relationship to ALGO).
+  rolling L=1  (=same-day): corr=-0.082, 5/15 blocks agree
+  rolling L=3:               corr=-0.102, 4/15 blocks agree
+  rolling L=5:                corr=-0.161, 6/15 blocks agree  (largest magnitude)
+  rolling L=10:               corr=-0.120, 6/15 blocks agree
+  rolling L=20:                corr=-0.008, 7/15 blocks agree  (decays to ~zero)
+  seed-pair spread dispersion: corr=+0.035, 6/15 blocks agree (sign flips vs raw)
+Every variant lands in the same place: block-level agreement stuck at 4-7
+out of 15 (always under half), regardless of measurement choice (same-day
+vs smoothed, raw-return vs seed-pair-specific), and even sign is not stable
+across measurement choices (raw dispersion negative, seed-pair dispersion
+positive). This is a reasonably thorough sweep of the measurement space,
+not just one failed attempt -- closing this idea out rather than continuing
+to permute variants.
+
+---
+
+Net including this entry: 12 of 15 ideas rejected outright, 1 (algo_ridge_z)
+real but weaker/more concentrated than currently weighted, #9's underlying
+statistical premise still real but two separate implementation attempts
+have both failed to validate, #10 genuinely inconclusive pending a third
+window, and #11 remains the only fully validated positive result, live in
+the lineage as Sigma18.
+
+---
+
+### 16. Gray tier isolation test (GLO, GREC) -- REJECTED, weak and unstable, no plateau
+Background: unlike the birth-catcher (just isolated and rejected in #13),
+the gray tier (half-weight GW=0.5, looser cointegration gate: full-history
+AR1 t < GLO=-3.4 AND recent-250-day t < GREC=-2.8) had never been isolated
+on its own in this project. The only prior evidence was indirect: Sigma8
+introduced gray tier and birth-catcher together, bundled, and scored mixed
+vs Sigma7p (worse 251-500, better 501-750), never ablated to separate the
+two; and #9's diagnostic found gray-tier pairs' lead-lag L-entries show no
+stability advantage across time-halves (correlation -0.019, worse than a
+random draw), unlike seed pairs (0.343) -- suggestive but about their
+contribution to L, not their own pair-reversal trade.
+
+Method: same treatment as #13. Isolated the gray-tier scan (vectorized the
+same way, one ar1_t call per anchor name instead of per pair) and its own
+GW/GBANDV z-score reversal trade standalone, nothing else in the book.
+Excluded names already claimed by the real seed-pair scan first, matching
+what gray tier would actually see in the full book. Fully causal, in-sample
+only (days 1-500), full 15-block breakdown across days 120-499.
+
+Result, GLO swept at GREC=-2.8 fixed:
+  GLO=-3.0: Sharpe 0.18, 8/15 blocks positive
+  GLO=-3.2: Sharpe 0.64, 13/15 blocks positive  (best block consistency)
+  GLO=-3.4: Sharpe 0.39, 8/15 blocks positive  (as-coded)
+  GLO=-3.6: Sharpe 0.05, 9/15 blocks positive
+  GLO=-3.8: Sharpe 0.02, 7/15 blocks positive
+  GLO=-4.0: Sharpe 0.16, 8/15 blocks positive
+No clean monotonic plateau -- GLO=-3.2's 13/15 block count is a sharp,
+isolated jump from its immediate neighbours (-3.0 and -3.4 both sit at
+8/15), the same lone-spike-in-consistency shape as #13's BGATE result,
+just less severe in magnitude (no value goes sharply negative here).
+
+Result, GREC swept at GLO=-3.4 fixed:
+  GREC=-2.2: Sharpe -0.07, 9/15 blocks positive  (negative Sharpe)
+  GREC=-2.5: Sharpe  0.21, 9/15 blocks positive
+  GREC=-2.8: Sharpe  0.39, 8/15 blocks positive  (as-coded)
+  GREC=-3.1: Sharpe  0.02, 9/15 blocks positive
+  GREC=-3.4: Sharpe -0.18, 10/15 blocks positive  (negative Sharpe)
+Both ends of this sweep go net negative, with the as-coded value sitting
+near but not at the peak; the whole range spans only Sharpe -0.18 to 0.39,
+i.e. everything here is weak regardless of setting.
+
+Every single value across both sweeps (10 configs total) has Sharpe under
+0.65 -- for comparison, the validated algo_ridge_z sits at 1.09 with 11/15
+blocks positive and zero sign flips across its own neighbourhood sweep, and
+the seed pairs run Sharpe 6-7. The gray tier's own standalone edge, if it
+exists at all, is smaller than anything else this project has kept.
+
+Verdict: REJECTED as a standalone mechanism, same conclusion as the
+birth-catcher (#13) though for a slightly different reason -- not a sharp
+sign-flipping collapse, but uniformly weak Sharpe (never exceeding 0.65)
+combined with unstable block consistency that jumps around parameter
+neighbours without a clean trend. Between #9 (gray-tier L-entries show no
+persistence), #13 (birth-catcher rejected), and this entry, none of the
+three "speculative" additions layered on top of the seed-pairs-plus-L core
+(gray tier, birth-catcher, or boosting the L matrix) have survived isolated
+scrutiny -- the core (seeds + dense L + the ag-vector) remains the only
+part of the chassis with a clearly validated standalone edge. No candidate
+file built; nothing to promote. Not necessarily evidence gray tier hurts
+the full book (small half-weight overlay, tested in isolation only, same
+caveat as #13), but retuning GLO/GREC is very unlikely to help.
+
+---
+
+Net including this entry: 13 of 16 ideas rejected outright, 1 (algo_ridge_z)
+real but weaker/more concentrated than currently weighted, #9's underlying
+statistical premise still real but two separate implementation attempts
+have both failed to validate, #10 genuinely inconclusive pending a third
+window, and #11 remains the only fully validated positive result, live in
+the lineage as Sigma18. Of Sigma18's five architectural pieces (seeds,
+dense L, gray tier, birth-catcher, ag-vector), three now have a positive
+isolated validation (seeds, L, ag-vector) and two do not (gray tier,
+birth-catcher), though neither of the two failing pieces has been tested
+for its marginal contribution inside the full book, only standalone.
+
+---
+
+### 17. Marginal contribution of gray tier and birth-catcher inside the full book -- birth-catcher removed (VALIDATED, now Sigma19), gray tier kept
+Background: #13 and #16 showed neither birth-catcher nor gray tier has a
+standalone edge in isolation. That does not prove removing either helps the
+real book -- a weak or zero-edge piece can still help via diversification,
+or its trades could be crowding out worse ones elsewhere. This entry tests
+the actual, different question: what happens to Sigma18's real two-window
+score if each is removed from the full book.
+
+Method: parametrized copy of Sigma18's exact chassis with independent
+on/off toggles for gray tier and birth-catcher (verified byte-faithful:
+baseline with both on reproduces Sigma18's real scores exactly, 821.71 and
+825.41 on the respective windows). Scored all four combinations on both
+windows via the same faithful harness used throughout this project.
+
+Result:
+                              251-500          501-750
+  baseline (both on):         821.71           825.41
+  no gray tier:                827.33           774.87   (-50.5 on 501-750)
+  no birth-catcher:            831.58           836.73   (+9.9 / +11.3, both up)
+  neither:                     855.58           758.79   (-66.6 on 501-750)
+Removing gray tier alone helps 251-500 slightly but hurts 501-750 badly;
+removing both is dominated by that same gray-tier effect. Removing
+birth-catcher alone is the only configuration that improves BOTH windows --
+the same balanced-across-both-windows shape that made SigmaB10 and Sigma18
+themselves trustworthy, as opposed to Sigma17's lopsided single-window win.
+
+Block-level check (10 x 25-day blocks) on the no-birth-catcher result,
+stated plainly rather than oversold: 6/10 blocks better on 251-500, 5/10 on
+501-750 -- close to a coin flip in win-RATE terms, even though the net sum
+favours removal on both windows. This is weaker block-level dominance than
+the ag-vector or seed pairs show, but it is consistent with the underlying
+finding from #13: birth-catcher had no real standalone directional edge, so
+removing it should net out close to noise-cancellation (a mix of blocks
+getting better and worse) rather than a single dominant new-alpha effect.
+Not adding anything new, just removing an already-invalidated piece, so the
+bar for promotion here is "does it help on net, on both windows" rather
+than the sharper "clean plateau + block dominance" bar applied to a genuine
+new signal like the ag-vector.
+
+Built Sigma19.py = Sigma18.py with BIRTHW=0 (gray tier, seeds, dense L, and
+the ag-vector all untouched). Scored the actual file directly (not just the
+diagnostic copy) to confirm: 831.58 / 836.73, exact match.
+
+Verdict: VALIDATED as a simplification -- birth-catcher removed, promoted
+to Sigma19, now the best-by-backtest model in the lineage. Gray tier is
+explicitly NOT removed despite also failing its own standalone test (#16):
+its marginal contribution to the full book is apparently positive (removing
+it costs 50+ points on 501-750) even though it shows no edge traded alone,
+most plausibly a diversification/variance-reduction effect rather than a
+directional one. Do not remove gray tier without separately re-testing that
+specific change on its own. Not yet tested live.
+
+---
+
+Net including this entry: 13 of 17 ideas rejected outright, 1 (algo_ridge_z)
+real but weaker/more concentrated than currently weighted, #9's underlying
+statistical premise still real but two separate implementation attempts
+have both failed to validate, #10 genuinely inconclusive pending a third
+window, and #11 and #17 are validated positive results -- #17 promoted the
+lineage from Sigma18 to Sigma19 (birth-catcher removed, gray tier kept).
+Sigma19 is now the best-by-backtest model: 832 (251-500), 837 (501-750).
+
+---
+
+### 18. Gray tier relationship-formation alternatives -- REJECTED across the board, including a confound worth remembering
+Background: gray tier survived #17's full-book test (removing it costs
+501-750 points) despite failing its own standalone test (#16). Its
+relationship-formation method has never been questioned before -- it is
+just a looser copy of the seed-pair cointegration test, and its trading
+mechanics (full-history OLS regression, full-history std for the z-score)
+are notably staler than the seed pairs' own mechanics (450-day windowed
+OLS, EWMA-responsive z). Tested genuinely different approaches, isolated
+standalone first (same treatment as #16), in-sample only, 15-block
+breakdown days 120-499:
+
+  (0) baseline: cointegration AR1-t selection, full-history OLS + std
+      Sharpe 0.39, 8/15 blocks positive (matches #16 exactly)
+  (1) same selection, seed-pair-style trading (450-day windowed OLS + EWMA z)
+      Sharpe 0.53, 9/15 blocks positive -- a real but modest improvement
+  (2) distance-based selection (Gatev/Goetzmann/Rouwenhorst: minimum sum-
+      of-squared-difference of normalized cumulative price paths), windowed
+      +EWMA trading, swept top-K partners
+      K=7: Sharpe 1.16 | K=10: 0.90 | K=14: 2.04, 12/15 blocks | K=20: 1.93
+  (3) correlation-based selection (raw return correlation above a
+      threshold), windowed+EWMA trading
+      thresh=0.3: 0.83 | 0.4: 1.65 | 0.5 and 0.6: zero trades (no pairs qualify)
+
+(2) and (3) initially looked like the strongest results of this whole gray-
+tier investigation -- Sharpe over 2.0 at the right K, well above anything
+gray tier has shown before. Before trusting that, ran a control: RANDOM
+pairing (no selection criterion at all -- just shuffle unclaimed names into
+pairs), same windowed+EWMA trading mechanics, 5 seeds per K:
+  K=7:  mean Sharpe 0.90 (range 0.45-1.67)
+  K=10: mean Sharpe 0.78 (range 0.57-0.91)
+  K=14: mean Sharpe 1.01 (range 0.43-1.55)
+  K=20: mean Sharpe 1.42 (range 0.54-2.20)
+Random pairing lands in the same range as distance-based and correlation-
+based selection at every K tested (K=20 random even hit 2.20 on one seed,
+above distance's 1.93). This means the apparent edge in (2) and (3) is NOT
+coming from the selection criterion -- it is coming from trading MORE pairs
+with a responsive (windowed+EWMA) mechanism, which pays off close to
+regardless of which specific names get paired. Consistent with this
+project's earlier finding that the dense lead-lag matrix's edge is a
+Grinold's-law breadth effect rather than precision in any single entry (#9)
+-- this dataset appears to reward broad, responsive mean-reversion exposure
+generally, not clever pair-specific relationship-finding. Building (2) or
+(3) into a real model would mean trading arbitrary, statistically
+unmotivated pairs that happen to work about as well as random ones -- a
+real overfitting risk, not a genuine method improvement.
+
+The one approach with an actual statistical rationale intact -- (1), same
+cointegration-selected pairs, just traded less stalely -- was tested at the
+full-book level on top of Sigma19 (same treatment as #17):
+                              251-500          501-750
+  Sigma19 (gray full-history): 831.58           836.73
+  + gray windowed/EWMA trade:   830.90           843.19   (-0.68 / +6.46)
+Slightly down on one window, modestly up on the other -- within noise,
+nowhere near the clean both-windows-improve shape #17 needed to promote
+birth-catcher's removal. Too small and inconsistent to justify the added
+complexity.
+
+Verdict: REJECTED across all three alternatives tested. Gray tier's
+relationship-formation method (cointegration selection) is not obviously
+improvable by distance or correlation based alternatives -- those turned
+out to be statistically indistinguishable from random pairing once properly
+controlled, which is itself the important finding, not just a null result.
+Fixing gray tier's stale trading mechanics is directionally sound (matches
+seed pairs' own approach) but too small an effect at the full-book level to
+promote. Gray tier remains exactly as coded in Sigma19: cointegration
+selection, full-history OLS + std trading. No candidate file built.
+
+---
+
+Net including this entry: 14 of 18 ideas rejected outright, 1 (algo_ridge_z)
+real but weaker/more concentrated than currently weighted, #9's underlying
+statistical premise still real but two separate implementation attempts
+have both failed to validate, #10 genuinely inconclusive pending a third
+window, and #11 and #17 remain the only validated positive results.
+Sigma19 is unchanged and remains the best-by-backtest model: 832 (251-500),
+837 (501-750).
+
+---
+
+### 19. Which strategy actually benefits from gray tier -- isolated seeds and lead-lag separately (both do, with a real overlap effect)
+Background: #17 established gray tier is worth keeping in the full book
+(removing it costs 50+ points on 501-750) despite showing no standalone
+edge (#16) and no evidence its relationship-selection method beats random
+(#18). Open question: is that full-book benefit coming from a specific
+existing strategy (seeds, or lead-lag) that gray tier extends, or is it
+diffuse across the whole book? Tested by isolating seeds and lead-lag(+ag)
+each on their own, with and without gray tier added, plus the full stack
+for reference. Sigma19's chassis, parametrized with independent on/off
+toggles for seeds / lead-lag(+ag) / gray tier; the ALGO reversal sleeve is
+unaffected by any of these toggles (hedge weight is 0, so it runs
+identically in every config) and is included in every score for a fair
+like-for-like comparison, same as the rest of this project's scoring.
+
+Result (own harness, both windows):
+                                   251-500          501-750
+  seeds only:                       435.52           308.66
+  seeds + gray:                     480.37           425.18   (+44.9 / +116.5)
+  LL(+ag) only:                     715.89           581.62
+  LL(+ag) + gray:                   733.18           743.47   (+17.3 / +161.9)
+  seeds + LL(+ag), no gray:         855.58           758.79
+  seeds + LL(+ag) + gray (Sigma19): 831.58           836.73   (-24.0 / +77.9)
+
+Gray tier adds real, consistent value to EITHER strategy alone -- not just
+one of them -- and the 501-750 improvement when paired with a single
+strategy (+116.5 with seeds, +161.9 with lead-lag) is larger than its
+marginal contribution to the already-combined full book (+77.9). Once
+seeds and lead-lag are both present together, gray tier's marginal value
+shrinks substantially and even turns slightly negative on 251-500. Block-
+level check (10 x 25-day blocks, both pairings): seeds+gray beats seeds-
+alone in 7/10 blocks on both windows; LL(+ag)+gray beats LL(+ag)-alone in
+6/10 (251-500) and 8/10 (501-750) blocks -- both meaningfully more
+consistent than birth-catcher's 6/10 and 5/10 coin-flip result, confirming
+this is real, broadly-distributed signal rather than a lucky block or two.
+
+Verdict: gray tier is not an extension of one particular strategy -- it
+captures something that benefits seeds and lead-lag roughly similarly when
+tested alone, which is consistent with #18's earlier finding that its
+"relationship-forming" advantage over random pairing was never clearly
+established: gray tier most likely works by broadening exposure to this
+dataset's general mean-reversion tendency (same diffuse, Grinold's-law-
+style breadth effect behind the dense lead-lag matrix itself), not by
+identifying any one precise, strategy-specific mechanic. The overlap effect
+(marginal value shrinks once both seeds and lead-lag are already present)
+explains why gray tier shows no standalone edge (#16) yet is still worth
+keeping (#17): its real contribution is redundant coverage across what the
+other two signal families jointly already partially capture, not an
+independent third source of alpha. No architecture change from this entry
+-- confirms Sigma19's current design (gray tier kept, unmodified) is
+correct, with a clearer understanding of why.
+
+---
+
+Net including this entry: 14 of 18 ideas rejected outright (this entry is
+a confirmatory diagnostic, not a rejection or a new candidate), 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 genuinely
+inconclusive pending a third window, #11 and #17 remain the validated
+positive results, and #19 explains (without changing) why gray tier earns
+its place in Sigma19. Sigma19 is unchanged and remains the best-by-backtest
+model: 832 (251-500), 837 (501-750).
+
+---
+
+### 20. Searching for a better capture of gray tier's diversification effect -- none found; corrects #18/#19's "selection doesn't matter" framing
+Background: #19 explained gray tier's value as a low-correlation
+diversification/breadth overlay (~0.06-0.11 correlation with the rest of
+the book), and #18 had found coint-selected pairs statistically
+indistinguishable from random pairing in STANDALONE testing. Natural next
+question: if the effect is really just "breadth of weak, low-correlation
+bets," is gray tier's specific implementation (pairwise, cointegration-
+gated, touching a subset of unclaimed names) actually the best way to
+harvest it, or would something simpler/broader capture more of it?
+
+Method: tested alternative forms of the overlay INSIDE the full seeds+LL(+ag)
+book (not standalone -- #18's standalone comparison is exactly what this
+entry shows was misleading), same weight (GW=0.5) and windowed+EWMA trading
+mechanics as gray tier itself where applicable:
+  - singles: every unclaimed name traded individually (no partner, no beta leg)
+  - random_pairs: all unclaimed names paired randomly, disjoint
+  - distance_pairs: all unclaimed names paired by minimum normalized-price
+    distance (Gatev et al.), disjoint
+  - overlapping_random: names paired randomly WITHOUT disjointness, matching
+    gray tier's actual pair count (26, found by direct inspection of a real
+    rescan) and its overlapping structure (a name can appear in several pairs)
+
+Result, full book, weight=0.5:
+                                     251-500    501-750
+  no diversification overlay at all:  855.58     758.79
+  coint pairs (Sigma19, current):     831.58     836.73
+  singles, all unclaimed:             762.92     657.30
+  random pairs, all unclaimed:        840.76     636.12
+  distance pairs, all unclaimed:      788.19     610.75
+Every alternative underperforms gray tier's real number on 501-750, several
+underperform even having NO overlay at all. Re-swept singles and
+random_pairs at much lower weights (0.05 to 0.30) in case 0.5 was simply
+oversized for touching 3x more names than gray tier -- every weight tested
+still landed below the no-overlay baseline on 501-750 (best case 748.9 at
+weight=0.05, vs baseline's 758.79), so this is not a sizing artifact.
+
+Checked whether gray tier's advantage was really about touching FEWER
+names (a "selectivity" story) rather than pair quality: direct inspection
+of a real rescan (day 500) showed gray tier's cointegration gate actually
+touches 26 of 36 available unclaimed names (72%) via 26 overlapping pairs
+-- comparably broad to the alternatives, just structured with overlap
+(a name can get votes from multiple pairs) rather than disjoint pairing.
+Built overlapping_random to match this exactly (26 overlapping pairs,
+random partners) and tested across 8 different random seeds:
+  251-500 range: 643.47 to 851.88   (coint: 831.58)
+  501-750 range: 551.41 to 771.33   (coint: 836.73)
+Coint selection beats every one of the 8 random seeds on 501-750 by at
+least 65 points, and beats most of them by 150-250 points. This is not
+explained by pair count, overlap structure, or weight sizing -- matching
+all three still leaves random selection clearly and consistently behind.
+
+This corrects #18's standalone finding, not just adds to it: #18 showed
+coint-selected and randomly-selected pairs are statistically
+indistinguishable when traded ALONE, with nothing else in the book, and
+that conclusion is still accurate for that narrow test. But it does NOT
+imply the selection method is interchangeable inside the full book --
+tested properly there (multiple seeds, matched pair count and structure,
+weight-swept), cointegration selection is clearly and robustly better than
+random selection. The standalone test missed a real interaction effect:
+most likely, cointegration-selected spreads (built the same way as the
+seed pairs, on ALGO-residualized-adjacent data) tend to complement rather
+than conflict with what the dense lead-lag matrix already believes about
+the same names, whereas broader/random overlays generate a lot of extra
+votes that fight the existing consensus instead of adding clean, low-
+correlation information -- consistent with why singles and random/distance
+pairs (touching MORE names with LESS discrimination) underperform even
+doing nothing.
+
+Verdict: searched for a better capture of the diversification effect and
+did not find one. Gray tier's current form (cointegration-gated, pairwise,
+full-history OLS+std trading, GW=0.5) beats every alternative tested at
+every weight and every random seed tried. Revises the theoretical
+explanation from #19: gray tier is still fundamentally a low-correlation
+diversification effect (correlation finding from #19 stands), but the
+cointegration gate is doing real, non-arbitrary selection work at the
+full-book level that a same-sized random or distance-based selection
+cannot replicate -- it is not simply "any weak additional signal would do."
+No change to Sigma19; this entry is a validation of the existing design,
+arrived at by trying and failing to beat it.
+
+Follow-up: the "diversification" framing above is directionally right but
+was still a story, not a measured mechanism. Measured it directly: for
+every name on every day, compared the seeds+LL-only position to the
+seeds+LL+gray position and isolated every case where gray tier's vote
+actually FLIPS the sign of the combined position (the cases where it's
+doing something, not just riding along). For each flip, recorded whether
+the flipped direction was realized-profitable the next day, coint
+selection vs same-sized random selection:
+                      # flips    avg pnl per flip (direction, raw per-share)
+  251-500  coint:        983            -0.01  (~flat)
+  251-500  random:      1663            -0.03
+  501-750  coint:         957            +0.05
+  501-750  random:      1744            -0.03
+Two effects, both real: (1) random selection causes roughly 70-80% MORE
+flips than coint selection -- uninformative partners disagree with what LL
+already believes far more often, simply because they carry no real
+information; (2) when coint-selected pairs DO disagree with LL, that
+disagreement is directionally profitable on 501-750 and roughly flat (not
+negative) on 251-500, while random pairs' disagreements are consistently
+unprofitable on both windows -- corrupting calls LL had already gotten
+right, on average.
+
+This is the actual mechanism, not just "breadth" or "low correlation":
+gray tier's cointegration gate is not finding pairs with strong standalone
+edge (that part of the earlier story, from #16/#18, still holds) -- it is
+filtering OUT the specific pairs whose disagreement with the rest of the
+book would just be noise. It functions as a low-noise dissent filter:
+it rarely overrides the lead-lag matrix's view, and is more often right
+than wrong on the occasions it does. Random selection has no such filter,
+so it generates many more corrections that are net-negative on average.
+This is why gray tier shows no standalone edge (its own trades, taken
+alone, are unremarkable) yet is clearly worth keeping in the full book
+(its disagreements with the rest of the book are informative, not random).
+
+Second follow-up, resolving why individually-unprofitable pairs can still
+add real information: tested the competing hypothesis that gray tier's
+edge is actually a correlated/redundant echo of the dense lead-lag matrix
+L (i.e. gray tier just re-discovers relationships L already flags, with
+extra noise) rather than genuinely separate information. Compared
+|L[i,j]| (the lead-lag matrix's own lag-1 residual cross-correlation
+entry) for gray-tier-selected pairs against the full available population
+and a random sample, at three independent rescan snapshots:
+              gray-selected mean|L|   all-available mean|L|   random mean|L|
+  day 300:          0.043                   0.049                 0.046
+  day 400:          0.035                   0.042                 0.040
+  day 500:          0.030                   0.038                 0.038
+Gray-selected pairs consistently show SMALLER |L| than both the full
+population and random samples, at every snapshot checked -- the opposite
+of what the "correlated/redundant signal" hypothesis predicts. Gray tier is
+not preferentially picking pairs the lead-lag matrix already considers
+strongly related.
+
+Resolution: L is built from one-day-lagged RETURN cross-correlation (a
+momentum/lead-lag statistic). Gray tier is built from an AR(1) test on the
+PRICE-LEVEL spread (a cointegration/stationarity statistic, same family as
+the seed pairs, Engle-Granger tradition). These are related but genuinely
+different properties of a pair relationship -- a pair can have a mean-
+reverting price-level spread without showing strong lagged-return cross-
+correlation, and vice versa. Gray tier is not a noisier restatement of what
+L already knows; it is a second, structurally different statistical test
+that catches real (if individually weak) relationships L cannot see at
+all, since L never tests price-level stationarity. This is why the pairs
+are individually unprofitable-to-mediocre alone (a smaller, noisier
+population than the seven hand-verified seed pairs, and level-cointegration
+alone is not a strong standalone edge in this dataset) yet genuinely
+additive when combined with L specifically -- it is filling a structural
+blind spot in L's own methodology, not duplicating L with worse precision.
+Together with the flip-mechanism finding above, this is now a complete,
+evidence-based answer rather than a plausible-sounding story: gray tier
+works because it is a different kind of test catching a different kind of
+relationship, individually weak, but structurally uncorrelated with L's own
+blind spot, which is exactly why its rare disagreements with L are
+informative rather than noisy.
+
+Third follow-up, verifying an externally-suggested theory (via ChatGPT) that
+gray tier functions primarily as a "veto" -- an opposing voting scheme that
+fine-tunes seeds+LL's decisions rather than a complementary/agreeing signal.
+Broke down every gray-active name-day into four categories (coint mode,
+both windows), tracking whether gray's own vote sign agrees or disagrees
+with what seeds+LL alone would decide, and whether a disagreement is strong
+enough to actually flip the final position:
+                                        % of active days      realized pnl
+  agrees with seeds+LL (reinforces):        50-52%              +0.052 / +0.058
+  disagrees AND wins (flips the sign):      21-23%              -0.007 / +0.054
+  disagrees but too weak (suppressed):      25-28%      would-be -0.109 / -0.144 if it had won
+  activates where seeds+LL had no view:      0%                  never happens (L is dense)
+
+Verdict: the "veto/opposing" framing is half right and the wrong half
+matters. Gray tier is NOT primarily adversarial -- over half of active
+days it agrees with and profitably reinforces the existing seeds+LL
+direction, not fights it. But there is a genuine, well-calibrated filter
+hiding in how DISAGREEMENTS are handled: disagreements too weak to
+overcome GW=0.5's weighting are suppressed, and those suppressed
+disagreements would have been clear net losers on average if allowed to
+win (-0.109 to -0.144); disagreements strong enough to flip the position
+are roughly breakeven-to-profitable instead (-0.007 / +0.054). The current
+weight is not arbitrary -- empirically, it happens to separate low-
+conviction (wrong) dissent from high-conviction (closer to right) dissent.
+More accurate description than either "complementary" or "veto" alone:
+gray tier is mostly a reinforcing second opinion (majority case, profitable
+on its own), with a secondary, conviction-gated override mechanism for the
+minority of cases where it disagrees strongly enough to matter.
+
+Fourth follow-up, testing the instability/decay theory directly (rather
+than just citing #9's L-entry rewiring finding as indirect support): if
+gray tier's weakness is partly explained by trading short-lived, one-off
+detections mixed in with genuine relationships, requiring a pair to be
+detected in 2+ CONSECUTIVE 20-day rescans before trading it (rather than
+any pair that clears the cointegration gate once) should filter toward more
+durable relationships and improve generalization. Tested persist_min in
+{1 (current), 2, 3, 4, 5} on the full Sigma19 book, both windows:
+  persist_min=1 (current): 251-500=831.58   501-750=836.73
+  persist_min=2:            251-500=858.78   501-750=802.46
+  persist_min=3:            251-500=839.31   501-750=766.37
+  persist_min=4:            251-500=875.86   501-750=804.39
+  persist_min=5:            251-500=855.36   501-750=786.79
+
+Verdict: REJECTED, and in the opposite direction the theory predicted.
+Every persist_min > 1 consistently IMPROVES 251-500 and consistently HURTS
+501-750 -- the same lopsided, single-window-wins shape this project already
+distrusts (the pattern that sank Sigma17), not the "filters noise, improves
+generalization" result the instability theory anticipated. Most likely
+explanation: with RESCAN=20, "persist_min=2" only requires surviving from
+one 20-day-old snapshot to the next -- too short a bar to select for
+genuine long-term stability. What it mostly does instead is delay entry
+into freshly-detected pairs, cutting out exactly the kind of newly-formed
+relationship the birth-catcher was built to trade (and #13 already showed
+that doesn't work in this dataset either). This does not overturn the
+instability/multiple-comparisons theory as a partial explanation for gray
+tier's weak standalone Sharpe, but it does show that a simple persistence
+filter is not the right lever to act on it -- no candidate file built, no
+change to Sigma19.
+
+---
+
+Net including this entry: 15 of 19 ideas rejected outright (this and #19
+are confirmatory diagnostics rather than rejections of new candidates), 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 genuinely
+inconclusive pending a third window, #11 and #17 remain the validated
+positive results, and #19/#20 together give a corrected, evidence-based
+explanation of why gray tier earns its place in Sigma19 and why its
+specific form is hard to improve on. Sigma19 is unchanged and remains the
+best-by-backtest model: 832 (251-500), 837 (501-750).
+
+---
+
+### 21. ALGO reversal sleeve -- PARTIALLY VALIDATED, not settled: real standalone mechanism, but the specific horizon calibration shows a curve-fitting red flag inside the full book
+Background: the plain N-day ALGO reversal (currently N=5, full $100k cap,
+hedge weight 0) has been in the lineage since SigmaB10 and carried forward
+unchanged through Sigma16-19, but had never been rigorously re-tested this
+session. The only prior evidence was a single pre-session two-model
+comparison (Sigma16 vs Sigma10FB, same chassis otherwise): +150 on
+251-500, +1 on 501-750 -- no block-level check, no horizon sweep, a
+lopsided one-window contribution. Given it is the single largest position
+in the book (10x any name's dollar cap), this warranted the same treatment
+as gray tier and birth-catcher.
+
+Method, stage 1 (standalone): traded ALGO alone, full $100k, sign =
+-sign(N-day cumulative log move), nothing else in the book, horizon swept,
+15-block breakdown days 120-499:
+  horizon=2: Sharpe 1.69, 10/15 blocks   horizon=3: Sharpe 1.17, 11/15
+  horizon=4: Sharpe 1.29, 11/15          horizon=5: Sharpe 1.27, 9/15 (as-coded)
+  horizon=6: Sharpe 0.03, 8/15           horizon=8: Sharpe 0.76, 9/15
+  horizon=10: Sharpe 0.35, 10/15         horizon=15: Sharpe -0.21, 7/15
+  horizon=20: Sharpe 0.92, 8/15
+A genuine plateau across horizons 2-5 (Sharpe 1.17-1.69, all with
+reasonable block consistency), degrading into noise from horizon=6 onward
+-- a sensible, economically plausible shape (short-horizon reversal decaying
+at longer horizons), and stronger/cleaner than gray tier's standalone
+result ever was.
+
+Method, stage 2 (marginal contribution inside the real Sigma19 book,
+parametrized copy verified byte-faithful: baseline reproduces 831.58 /
+836.73 exactly): ALGO-flat vs horizon=5 (current), both windows:
+  ALGO flat:            251-500=680.87 (sharpe 7.15)   501-750=834.92 (sharpe 9.20)
+  horizon=5 (Sigma19):  251-500=831.58 (sharpe 7.35)   501-750=836.73 (sharpe 7.53)
+Block-level (10 x 25-day blocks): reversal beats flat in 7/10 blocks on
+251-500 and 6/10 on 501-750 -- both above coin-flip, comparable to some
+validated results in this log, but with large, high-variance individual
+block swings in both directions (e.g. 251-500 block 3: +467.4; block 4:
+-150.4; 501-750 block 2: +460.3; block 7: -422.4) -- a big, punchy,
+high-conviction bet, not a small refined edge, which fits its 10x-normal
+position size.
+
+Method, stage 3 (horizon sweep INSIDE the full book, not standalone, both
+windows):
+  h=2: 828.91/773.98   h=3: 769.46/769.94   h=4: 796.99/745.18
+  h=5: 831.58/836.73 (current)   h=6: 736.13/794.60   h=8: 798.13/753.80
+  h=10: 719.87/820.06
+Unlike the clean standalone plateau, horizon=5 is an ISOLATED SPIKE here --
+both immediate neighbours (4 and 6) score meaningfully worse on at least
+one window, and no other horizon comes close on both windows
+simultaneously. This is the same lone-spike-flanked-by-weak-neighbours
+signature that has killed several ideas in this log (birth-catcher's BGATE,
+entries 3/5/8) -- evidence the CURRENT calibration, specifically embedded
+in this specific book, is not robustly chosen, even though the underlying
+mechanism looks real in isolation.
+
+Second concern: the full-book contribution is almost entirely concentrated
+on 251-500 (+150.7) versus 501-750 (+1.8) -- closely reproducing the old
+pre-session Sigma16/Sigma10FB finding (+150/+1) despite a substantially
+reworked chassis since then (gray tier rebuilt, birth-catcher removed,
+ag-vector added). Independently reproducing an old number is reassuring
+about data quality, but does not resolve the underlying concern -- it
+confirms the lopsidedness has been present the whole time. Worse, on
+501-750 the reversal actually LOWERS Sharpe (9.20 -> 7.53) for almost no
+score gain -- the score formula saturates near mean once Sharpe is this
+high (SR^2/(SR^2+1) approx 1), so a real increase in risk is being masked
+by a roughly-flat score on that window.
+
+Verdict: PARTIALLY VALIDATED, not settled -- genuinely more nuanced than a
+clean pass or reject. In favour: the general short-horizon ALGO-reversal
+mechanism has real standalone evidence (cleaner than gray tier's), and its
+marginal contribution to the full book beats coin-flip block consistency on
+both windows. Against: the specific horizon=5 calibration is a lone spike,
+not a plateau, once embedded in the full book, and essentially all of its
+practical value rides on one of the two available windows while adding
+pure variance on the other. Not removing it -- doing so costs real money on
+251-500 and the block-level case for keeping it is genuinely positive --
+but explicitly flagging it as the least robustly-calibrated major
+component currently in Sigma19, and the one most worth re-checking first
+once days 751-1000 are available as a genuinely new data point. No change
+to Sigma19 from this entry.
+
+Follow-up, resolving the "why" rather than just the "does it work": tested
+whether ALGO's reversal is a distinct, ALGO-specific effect (e.g. a real
+market-factor overreaction/reversion phenomenon) or just another instance
+of this dataset's generic per-name mean-reversion property (the same
+property entry 18 found makes broad, unselective mean-reversion betting
+work across almost any name). Applied the identical 5-day reversal signal,
+standalone, to ALGO and 10 other individual names, days 120-499:
+  idx 1: Sharpe 0.18   idx 20: 0.31   idx 15: 0.39   idx 30: 0.50
+  idx 35: 0.75   idx 25: 0.84   idx 45: 1.01   ALGO (idx 0): 1.27
+  idx 5: 1.24   idx 40: 1.38 (stronger than ALGO)
+ALGO is not uniquely strong -- it sits in the middle-to-upper range of a
+broad population that all shows the same qualitative reversal tendency,
+with at least one ordinary name (idx 40) beating it outright. Structurally,
+ALGO is the ONE name permanently excluded from every pairwise mechanism
+(seeds, gray tier, and birth-catcher all scan starting from index 1, never
+touching index 0) -- so the reversal sleeve is not harvesting anything
+market-factor-specific, it is single-name-trading the generic per-name
+mean-reversion property that the other 49 names already get to express
+through pair trades, applied to the one name that has no pairing option.
+
+This also explains the fragility found earlier in this entry (the lone
+horizon spike, the lopsided single-window contribution): a genuine,
+structurally-grounded effect (like the seed pairs or the ag-vector) tends
+to show a wide, stable neighbourhood; generic single-name noise, traded
+unpaired and unhedged at full $100k size, is exactly what produces a result
+that is real on average but fragile to the specific parameterization.
+Verdict on the "why" question: RESOLVED. ALGO reversal is not a special
+market-factor effect; it is the dataset's generic mean-reversion property,
+applied via the only mechanism available to a name that cannot be paired.
+Does not change the entry's practical conclusion (keep it, but treat it as
+the least robustly-calibrated major component) -- it explains why that
+conclusion is the correct shape of answer, rather than a sign that a better
+calibration is waiting to be found.
+
+---
+
+Net including this entry: 15 of 20 ideas rejected outright, 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 genuinely
+inconclusive pending a third window, #11 and #17 remain the fully
+validated positive results, #19/#20 explain gray tier's real mechanism, and
+#21 leaves ALGO reversal as a flagged, partially-validated component rather
+than either a confirmed or rejected one. Sigma19 is unchanged and remains
+the best-by-backtest model: 832 (251-500), 837 (501-750).
+
+---
+
+### 22. Two ChatGPT-authored ALGO-shock refinements (Sigma7p_algo_vol_regime.py, Sigma7p_algo_regime_refined.py) -- both rejected
+Background: two received files, both built on the exact same base bundle as
+Sigma7p_robust_fit500.py (RESCAN=10, LLW=0.75, BAND=0.40, LL double-
+centering, 4% antisymmetric emphasis, 10% snapshot blend, the ag-vector),
+already fully ablated in entry 11 -- known there that most of these pieces
+are weak or net-negative alone, and only the ag-vector (already grafted
+into Sigma18/19) was the real driver. Both new files also freeze structural
+fitting at day 500 (`nt<=500` gate), same pattern as the original. Given
+this, the only things worth evaluating fresh are the two genuinely new
+ideas layered on top: (1) a 10% seed-vote downweight on days with an
+outsized ALGO shock (both files), and (2) splitting the ag-vector into
+high/low ALGO-volatility-regime variants, 65% pooled / 35% regime-specific
+(vol_regime file only).
+
+Scored both received files directly (own harness): vol_regime 763.16 /
+784.85, regime_refined 729.82 / 776.92 -- both below Sigma19 (832/837), but
+that is not the relevant comparison since these are the bare Sigma7p
+chassis (no gray tier, frozen at 500), not a Sigma19 variant. Isolated the
+two new ideas instead, grafted onto Sigma19's live, always-rescanning
+chassis (verified byte-faithful: baseline reproduces 831.58/836.73 exactly).
+
+Idea 1, seed-vote downweight on shock days, swept:
+  no downweight (baseline): 831.58 / 836.73
+  0.90 (as received):        822.14 / 851.45   (-9.4 / +14.7)
+  0.80:                       815.07 / 849.09   (-16.5 / +12.4)
+  0.70:                       811.47 / 843.05   (-20.1 / +6.3)
+Lopsided at every tested strength -- consistently hurts 251-500, helps
+501-750, the same wins-one-loses-the-other shape that sank Sigma17 and the
+seed-boost retry (entry 14). Block-level check at 0.90: 5/10 blocks on
+251-500 (a coin flip), 7/10 on 501-750 (decent, not dominant) -- genuinely
+mixed, not aggregate noise hiding a real effect either way.
+
+Idea 2, ALGO-volatility-regime-conditioned ag-vector split, swept:
+  no split (baseline):        831.58 / 836.73
+  blend=0.20:                  818.26 / 836.49   (-13.3 / -0.2)
+  blend=0.35 (as received):    824.82 / 796.07   (-6.8 / -40.7)
+  blend=0.50:                  818.37 / 789.72    (-13.2 / -47.0)
+Every value tested is net negative or flat-negative on both windows -- no
+configuration beats the single pooled ag-vector on either window, let alone
+both.
+
+Verdict: idea 2 REJECTED outright, cleanly, at every tested setting. Idea 1
+is genuinely mixed (not a clean reject, not promotable either) -- per the
+standing rule from entry 10, not chasing further tuning to force a two-
+window win on the same fixed in-sample data. Neither file adds anything
+usable to Sigma19. Also reinforces entry 11's finding: both files' "walk-
+forward validated" framing oversells components already shown weak or
+negative alone. No candidate file built, no change to Sigma19.
+
+---
+
+Net including this entry: 17 of 22 ideas rejected outright, 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 and #22-idea-1
+genuinely inconclusive pending a third window, #11 and #17 remain the fully
+validated positive results, #19/#20 explain gray tier's real mechanism, and
+#21 leaves ALGO reversal as a flagged, partially-validated component.
+Sigma19 is unchanged and remains the best-by-backtest model: 832 (251-500),
+837 (501-750).
+
+---
+
+### 23. ALGO's relationship with the other 49 names -- relative reversal, a robust but genuinely two-sided alternative to the plain self-reversal, deliberately not promoted, earmarked for the 751-1000 tie-break
+Background: entry 21/follow-up established the current 5-day self-reversal
+is not ALGO-specific -- it is generic per-name noise, structurally routed
+through ALGO because ALGO is excluded from every pairwise mechanism.
+Natural next question: is there a real, genuinely cross-sectional signal
+relating ALGO to the other 49 names, as opposed to ALGO's own noisy price
+history? Entry 10 (the B14 investigation) had previously found a "relative
+reversal" arm -- beta-residualize ALGO against the equal-weight basket of
+the other 49, fade the residual's short-horizon cumulative move -- with a
+reported Sharpe of 1.85-2.13 on the old chassis, never promoted only
+because it got tangled in B14's contaminated selection process.
+
+Re-implemented independently from the log's description (not reusing old
+code) and tested fresh, standalone, days 120-499:
+  bw=40 h=3: Sharpe 1.52, 11/15   bw=60 h=3: Sharpe 1.12, 11/15
+  bw=90 h=3: Sharpe 1.10, 10/15   (h=5, h=8 all much weaker, 0.05-0.49)
+Real and reasonably consistent at horizon=3 across all three beta_windows
+(no sign flips), though weaker than the old reported 1.85-2.13 -- flagged
+as a fresh, independently-derived number, not a confirmation of the old
+one, since the exact old mechanism/code was not available to reuse.
+
+Grafted onto Sigma19 as a REPLACEMENT for the plain self-reversal (verified
+byte-faithful: baseline reproduces 831.58/836.73 exactly), full 3x3 grid of
+beta_window x horizon, both windows:
+  bw=40 h=3:  796.66 / 892.24     bw=40 h=5:  691.99 / 962.36
+  bw=40 h=8:  674.85 / 943.08     bw=60 h=3:  756.62 / 892.36
+  bw=60 h=5:  660.72 / 926.09     bw=60 h=8:  697.00 / 904.50
+  bw=90 h=3:  751.72 / 892.36     bw=90 h=5:  683.96 / 952.39
+  bw=90 h=8:  683.81 / 888.90
+(self-reversal baseline for comparison: 831.58 / 836.73)
+
+Every single one of the 9 configurations underperforms self-reversal on
+251-500 and OUTperforms it on 501-750, several by a wide margin (bw=40
+h=5 reaches 962.36, +125.6 over baseline). Unlike entry 21's self-reversal
+horizon sweep (a fragile lone spike, sign-flipping and collapsing at
+neighbouring values), this is a genuinely stable, wide plateau -- no sign
+flips, no erratic swings, consistent direction across the entire grid.
+
+Verdict: NOT a rejection and NOT a promotion -- a materially more robust
+version of entry 10's genuinely-inconclusive pattern. This is a real,
+replicable, structurally different mechanism (cross-sectional, ALGO vs the
+other 49, not self-referential noise) that consistently trades away
+251-500 performance for a larger, consistent 501-750 gain, across its
+entire own parameter space. Per the standing rule (entry 10), not forcing
+a promotion by picking whichever config wins on net -- that would just be
+selecting the window to weight after the fact. Deliberately flagged
+higher-priority than a typical inconclusive entry: this is the cleanest
+candidate in the whole log for the 751-1000 tie-break once that data
+lands -- score both self-reversal (current) and relative-reversal (bw=60
+h=3, the config closest to entry 10's original recommendation) against the
+new window and let it decide which mechanism the live model should use. No
+change to Sigma19 from this entry.
+
+---
+
+Net including this entry: 17 of 23 ideas rejected outright, 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 and #22-idea-1
+genuinely inconclusive pending a third window, #11 and #17 remain the fully
+validated positive results, #19/#20 explain gray tier's real mechanism,
+#21 leaves ALGO reversal as a flagged, partially-validated component, and
+#23 adds a robust, structurally distinct alternative (relative reversal)
+earmarked as the priority test once 751-1000 is available. Sigma19 is
+unchanged and remains the best-by-backtest model: 832 (251-500), 837
+(501-750).
+
+---
+
+### 24. Three previously-untested alpha families (calendar effects, higher-order lags, PC2 residual reversion) -- all rejected at the forecast-quality stage
+Dynamic sweep of genuinely untouched families, forecast-quality stage only
+(causal correlation / hit-rate + block-level consistency, in-sample days
+1-500), before any backtest -- same discipline as entries 1 and 9.
+
+(a) Calendar / day-of-week effects: bucketed ALGO and basket returns by day
+index mod 5 and mod 7. Every bucket mean is within ~1 standard error of
+zero under both conventions, for both series -- no periodic structure at
+all. Expected for a synthetic generated dataset with no real calendar.
+REJECTED, no backtest warranted.
+
+(b) Higher-order lags in the core lead-lag matrix: Sigma19's L uses a
+one-day lag only. Tested adding lag-2 and lag-3 (blended 1.0/0.5/0.25,
+matching Zigma1's own weighting) via causal walk-forward forecast quality
+(refit every 5 days, days 200-499): lag-1-only corr 0.0659 / hit 0.524 vs
+lag-1+2+3 blend corr 0.0575 / hit 0.522. Adding slower lags makes forecast
+quality WORSE, not better. REJECTED -- and a useful confirmation that the
+model's lag-1-only design is correct, not arbitrary: the predictive
+relationship in this dataset is genuinely a one-day-lagged effect, and
+averaging in slower lags just dilutes it (consistent with entry 1, where
+trend-smoothing the L input also hurt).
+
+(c) Second-factor (PC2) residual mean-reversion: resid_z already strips
+ALGO-beta and PC1; nothing trades the structure left in PC2. First pass
+(every-5th-day, n=60) showed corr 0.072, the highest of the three and
+comparable to the lag-1 L matrix's own 0.066 -- looked promising. But the
+mandatory follow-up (full daily sampling, n=379, block-level, horizon
+swept H in {1,2,3,5,8}) collapsed it: corr -0.002 to -0.010 at every
+horizon, hit-rate ~0.50, block consistency 6-8/15 (coin flip). The 0.072
+was a small-sample artifact of thin sampling; under proper sampling there
+is no signal, and the faint sign is if anything slightly wrong.
+REJECTED -- and a textbook reminder of exactly why the block-level / full-
+sample check is mandatory before trusting any headline correlation.
+
+Verdict: all three REJECTED. Beyond the individual nulls, (b) and (c)
+together are a useful positive confirmation about the dataset's structure:
+its exploitable edge lives entirely in the cross-sectional ALGO+PC1
+residual relationships the model already trades -- there is no hidden
+calendar effect, no deeper-lag structure, and no deeper-factor (PC2) edge
+sitting unused. No candidate file built, no change to Sigma19.
+
+---
+
+Net including this entry: 20 of 26 ideas rejected outright, 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 and #22-idea-1
+genuinely inconclusive pending a third window, #11 and #17 remain the fully
+validated positive results, #19/#20 explain gray tier's real mechanism,
+#21 leaves ALGO reversal flagged as partially-validated, #23 earmarks
+relative reversal as the priority 751-1000 tie-break, and #24 closes out
+three untested families (all negative, but confirming the dataset's edge is
+fully accounted for by the mechanisms already in the model). Sigma19 is
+unchanged and remains the best-by-backtest model: 832 (251-500), 837
+(501-750).
+
+---
+
+### 25. ALGO's beta structure -- the third possible relationship, tested and rejected, completing the picture
+Background: two ALGO-vs-the-other-49 relationships were already found --
+the ag-vector (ALGO shock -> others, validated, #11) and relative reversal
+(others -> ALGO, robust but two-sided, #23). A third candidate had never
+been tested: rbeta, each name's beta to ALGO, computed every rescan purely
+for residualization but never traded as a signal in its own right. Tested
+two classic questions, forecast-quality stage, causal, days 120-499:
+
+(a) Cross-sectional beta sort ("betting against beta"): does a name's beta
+level predict its OWN forward idiosyncratic return (residualized against
+ALGO's same-day move using the same causal beta, to avoid the trivial
+"high-beta names move more with ALGO" result)?
+  beta_window=60:  corr -0.0030, hit-rate 0.5006, 5/15 blocks
+  beta_window=90:  corr +0.0056, hit-rate 0.5012, 7/15 blocks
+  beta_window=150: corr +0.0003, hit-rate 0.4983, 6/15 blocks
+Essentially zero at every window, hit-rate pinned at a coin flip.
+
+(b) Beta instability: does a RECENT SHIFT in a name's beta (short-window
+minus long-window) predict its own forward return?
+  short=30/long=150: corr -0.0128, hit-rate 0.4945, 5/15 blocks
+  short=60/long=250: corr -0.0211, hit-rate 0.4922, 4/15 blocks
+  short=30/long=90:  corr -0.0202, hit-rate 0.4956, 5/15 blocks
+Consistently negative in sign across all three specs (mildly interesting)
+but tiny in magnitude, hit-rate below 0.50, block consistency worse than a
+coin flip (4-5/15).
+
+Verdict: both REJECTED. No betting-against-beta effect, no beta-instability
+effect. This is a clean, reassuring negative rather than a gap: rbeta is
+already doing exactly the job it is used for (stripping the common factor
+before residualizing everything else for seeds/gray/L), and there is
+nothing further to trade in the beta values themselves. Completes the
+picture of ALGO's relationship with the other 49 names -- the ag-vector and
+relative reversal remain the only two real relationships found across this
+whole investigation. No candidate file built, no change to Sigma19.
+
+---
+
+Net including this entry: 21 of 27 ideas rejected outright, 1
+(algo_ridge_z) real but weaker/more concentrated than currently weighted,
+#9's underlying statistical premise still real but two separate
+implementation attempts have both failed to validate, #10 and #22-idea-1
+genuinely inconclusive pending a third window, #11 and #17 remain the fully
+validated positive results, #19/#20 explain gray tier's real mechanism,
+#21 leaves ALGO reversal flagged as partially-validated, #23 earmarks
+relative reversal as the priority 751-1000 tie-break, #24 confirms the
+dataset's edge is fully accounted for by existing mechanisms, and #25
+closes out ALGO's relationship structure with the other 49 names as fully
+explored. Sigma19 is unchanged and remains the best-by-backtest model: 832
+(251-500), 837 (501-750).
+
+---
+
+### 26. Correction to #21: self-reversal and relative reversal are hunting genuinely different forces, not the same one measured differently
+Background: asked what theoretical driving force lets relative reversal
+(#23) profit at all, given #21's conclusion that plain self-reversal is
+just generic per-name noise. Hypothesized relative reversal was the same
+force, just measured with less noise (beta-residualizing against the
+basket should strip market-wide co-movement, leaving a purer read of
+idiosyncratic drift) -- tested this directly rather than asserting it.
+
+Correlation between the two signals' underlying predictors (same days,
+horizon=5, beta_window=60): 0.0002 -- essentially zero. Investigated why:
+  ALGO's R^2 against the equal-weight basket of the other 49 = 0.9858
+  (idiosyncratic residual std 0.00117 vs raw ALGO return std 0.00992)
+  vs. ordinary names' R^2 against the rest-of-universe basket: 11-21%
+  (name idx 1: 21.3%, idx 10: 17.2%, idx 20: 12.7%, idx 30: 16.9%, idx 40: 11.5%)
+ALGO is structurally almost a pure proxy for the market-wide/common factor
+(98.6% of its variance is the shared component) -- the opposite profile
+from ordinary names, which are dominated by idiosyncratic variance.
+
+Revised conclusion: the two ALGO signals are hunting genuinely different
+forces, not the same one at different noise levels.
+  - Self-reversal fades ALGO's RAW move, ~98.6% of which is the common
+    market-wide component -- functionally an aggregate/index-level
+    mean-reversion bet (a real, distinct phenomenon: short-term
+    overreaction and correction at the index level), not generic per-name
+    noise as #21 characterized it. #21's standalone-Sharpe comparison
+    across names was correct on its own terms (ALGO wasn't uniquely
+    strongest) but did not decompose WHAT was being faded -- market-level
+    reversal and per-name idiosyncratic reversion apparently produce
+    similarly-sized standalone edges in this dataset, which is why that
+    comparison could not tell them apart. This is a genuine correction to
+    #21's characterization, not just an addendum.
+  - Relative reversal fades ALGO's tiny (1.4% of variance) idiosyncratic
+    residual after removing the market-wide component -- the same kind of
+    per-name idiosyncratic mean-reversion property found everywhere else in
+    this dataset (gray tier's random-pairing result, #21's other-names
+    self-reversal test), just applied to ALGO's small leftover sliver
+    instead of a full-sized name's own return.
+
+This gives a concrete hypothesis for #23's two-window split: if the
+relative strength of market-level overreaction versus idiosyncratic
+reversion shifts between the two windows, each signal would win on
+whichever window its own underlying force happens to dominate -- a
+testable, specific mechanism rather than an unexplained coincidence. Not
+independently verified (would require decomposing realized PnL by which
+force was dominant each period, not done here) but consistent with every
+fact established so far. No change to Sigma19; corrects the theoretical
+framing of #21 and adds mechanistic grounding to #23.
+
+---
+
+Net including this entry: Sigma19 unchanged, still 832 (251-500) / 837
+(501-750). #26 is a correction/refinement, not a new candidate -- it
+revises #21's characterization of self-reversal (market-level force, not
+generic noise) and gives #23's relative reversal a specific, mechanistic
+identity (idiosyncratic-residual force) rather than leaving both as
+unexplained statistical results.

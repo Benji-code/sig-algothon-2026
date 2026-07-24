@@ -1,0 +1,18 @@
+Neo Model List
+Fresh tracking file, starting from Sigma19 as the new baseline. Full prior
+lineage (Sigma0 through Sigma18, Zigma/SigmaB variants, all rejected
+experiments) remains documented in "Model Evaluation Summary.txt" -- this
+file only tracks models built from this point forward, scored against the
+Sigma19 baseline.
+
+Sigma19 (baseline)
+- Architecture:
+	- Sigma18's chassis (seed pairs, gray tier GW=0.5, dense 2-factor lead-lag, ag-vector) with the birth-catcher removed entirely (BIRTHW=0)
+	- Gray tier kept despite showing no standalone edge on its own (Alpha Exploration Log entries 16/18): isolated testing (entry 19) showed it functions as a low-correlation diversification/breadth overlay on top of seeds and lead-lag (~0.06-0.11 correlation with the rest of the book's daily PnL), not a source of independent alpha from precision pair-selection
+- Exposure:
+	- ALGO hedge off, plain 5-day reversal, full $100k cap
+- Performance:
+	- Days 251-500: 832
+	- Days 501-750: 837
+	- Days 751-1000:
+*Baseline model for this file. Promoted from Sigma18 after an isolated standalone test found birth-catcher had no real edge on either of its own parameters (entry 13), then a full-book ablation confirmed removing it improves both windows (entry 17). See Alpha Exploration Log entries 13, 16, 17, 18, 19 for the full validation chain.
