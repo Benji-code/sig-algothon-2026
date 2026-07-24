@@ -134,3 +134,17 @@ Sigma19
 	- Days 501-750: 837
 	- Days 751-1000:
 *Best-by-backtest model in the lineage as of this entry, beating Sigma18 on both windows (+9.9 on 251-500, +11.3 on 501-750). Birth-catcher had already failed an isolated standalone test (log entry 13: no plateau on either of its own parameters); this entry (17) tested its marginal contribution inside the full book instead and found removing it helps both windows, though block-level win rate was close to a coin flip (6/10 and 5/10) rather than a dominant result -- consistent with birth-catcher being mostly noise rather than reliably harmful. Gray tier was tested the same way and NOT removed: despite also failing its own standalone test (entry 16), removing it hurt 501-750 by -50.5, so it stays. Not yet tested live. See Alpha Exploration Log entry 17.
+
+Sigma20
+- Architecture:
+	- Sigma19's exact chassis (seeds, gray tier, dense 2-factor lead-lag, ag-vector, plain 5-day ALGO reversal), unmodified, wrapped with a new post-processing overlay: a "robust birth guard" that can only FLATTEN a conflicting non-ALGO position, never open or reverse one
+	- Detection side: a committee of 9 nearby recent-cointegration-formation definitions (3 formation windows {120,150,180} x 3 median-t cutoffs {-3.25,-3.5,-3.75} x... crossed with 3 t-gap thresholds {1.0,1.25,1.5}, aggregated via 5-day-persistence and median-across-windows), computed daily and stateless (no rescan cadence, unlike the rest of the book) -- must be unanimous (all 9 agree on a nonzero direction) before flagging a conflict with Sigma19's own position for a name
+	- Suppression side: a second committee of 9 "winner-protection" definitions (momentum-confirmation limit {0.75,1.0,1.25} x lead-lag-support minimum {0.20,0.30,0.40}), requiring at least 5 of 9 to agree before actually flattening -- protects positions that already have strong 5-day momentum confirmation or strong lead-lag backing from being vetoed
+	- Also gated by a breadth filter (only active when 40-75% of non-ALGO names rose on the latest day) and never touches ALGO
+- Exposure:
+	- Identical to Sigma19 otherwise; this is a pure risk-reduction overlay (can only reduce/flatten exposure on specific names, never add or reverse)
+- Performance:
+	- Days 251-500: 846
+	- Days 501-750: 853
+	- Days 751-1000:
+*Best-by-backtest model in the lineage as of this entry, beating Sigma19 on both windows (+14.9 / +16.7). Received from a third party (ChatGPT-authored) as a complete file, structurally related to the old rejected birth-catcher (recent-formation cointegration detection) but a genuinely different mechanism -- ensembled across 9 threshold definitions rather than one, veto-only rather than an independent additive trade, and gated by a momentum/lead-lag "winner protection" check. Validated with the full standard: correctness verified (fully causal, no lookahead), fires a reasonable number of times (206 flatten events over 750 days, not a handful of lucky trades), block-level consistency strong (8/10 and 7/10, small/surgical effect sizes, no single block dominating), and a 9-configuration neighbourhood sweep across both strictness knobs (unanimity fraction, winner-guard vote threshold) showed a genuinely wide, stable plateau with zero exceptions -- the cleanest robustness result of the whole exploration process, comparable to or exceeding the ag-vector's own validation. Not yet tested live. See Alpha Exploration Log entry 24.

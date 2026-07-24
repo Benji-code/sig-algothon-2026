@@ -1760,3 +1760,220 @@ revises #21's characterization of self-reversal (market-level force, not
 generic noise) and gives #23's relative reversal a specific, mechanistic
 identity (idiosyncratic-residual force) rather than leaving both as
 unexplained statistical results.
+
+---
+
+### 27. AR(1)-gated ALGO reversal (ChatGPT-authored theory + rule) -- theory confirmed, rule's aggregate result reproduced, but block-level fragility independently corroborates the source's own bootstrap audit; not promoted
+Background: received a substantial theoretical write-up (temporary factor-
+level price pressure, p_t = v_t + q_t, q_{t+1} = rho*q_t + eta) plus a
+proposed rule: scale the existing 5-day reversal's exposure by trailing
+60-day ALGO lag-1 autocorrelation, c_t = clip(-rho_60/0.02, 0, 1), fully
+active when rho_60 <= -0.02, flat when rho_60 >= 0. The source's own
+material included an unusually rigorous self-audit (block-bootstrap CIs,
+sign-randomization test, circular-shift placebo) that already concluded
+the rule is "a sensible risk-control hypothesis, not a validated alpha
+timing rule" -- explicitly not fully trusting its own headline numbers.
+Given this project's standing rule (verify every externally-sourced claim
+independently before acting on it), re-derived the key claims from scratch.
+
+Claim 1, ALGO's AR(1) autocorrelation regime shift (~-0.094 then ~+0.042):
+CONFIRMED almost exactly. Independent measurement: days 251-500 rho=-0.0950,
+days 501-750 rho=+0.0427. Rolling 60-day AR(1) sampled across the full
+history also shows genuine regime structure (+0.10 to +0.23 early, -0.07 to
+-0.28 mid-period, near-zero/mixed late) -- real time-varying structure, not
+noise.
+
+Claim 2, the theoretical framing (temporary price pressure / liquidity-
+provision reversal premium): credible and a genuine complement to entry
+26's structural finding (ALGO is ~98.6% a market-factor proxy by
+construction) -- gives the aggregate/index-level reversal force found in
+entry 26 a concrete economic mechanism (dealer inventory / order-flow
+pressure decaying with 0<rho<1) rather than leaving it as an unexplained
+correlation.
+
+Claim 3, the AR-gated rule's headline result (+~$14/day, +~18 score points
+on 501-750): AGGREGATE NUMBER REPRODUCED almost exactly in this project's
+own harness. As-received config (window=60, scale=0.02) grafted onto
+Sigma19: 251-500 831.58->843.68 (+12.1), 501-750 836.73->854.88 (+18.15) --
+both windows improve simultaneously, the balanced shape this project
+trusts most. Neighbourhood sweep on ar_scale (0.01/0.02/0.04) shows a
+genuine plateau, all three improving both windows with no sign flips --
+unlike the plain self-reversal's fragile horizon spike (entry 21). The
+ar_window parameter is more sensitive (40 and 90 each underperform on one
+window) but 60, the originally recommended value, sits at a real local
+peak, not an isolated fluke.
+
+Block-level check (10 x 25-day blocks, both windows) -- the decisive test:
+ar_gated beats plain self-reversal in only 3/10 blocks on 251-500 and 4/10
+on 501-750, WORSE than a coin flip on both windows despite the aggregate
+score improving on both. The aggregate gain is carried by a couple of
+large, partially offsetting swings, not a broad edge: 251-500 block 5
+alone contributes +118.5 (largest single driver); 501-750 block 7
+contributes +422.4 while block 2 LOSES -512.9 in the same window -- a
+massive single-block tail-risk swing. Several blocks show exactly zero
+difference (gate fully open, behaving identically to plain reversal for
+much of the period).
+
+This independently corroborates the source's own bootstrap/placebo audit
+(block-bootstrap CIs crossing zero in ~40% of samples, sign-randomization
+p~0.38 non-significant, circular-shift placebo showing only ~73rd
+percentile forward timing rank vs ~95th in-sample) via a completely
+different method -- two independent approaches (block decomposition here,
+bootstrap/placebo in the source) reaching the same skeptical conclusion is
+good convergent evidence the self-audit was correctly calibrated, not
+excessive caution.
+
+Additional test, the source's own "Moderate" option (fixed 20-30% reversal
+allocation, no gating): 251-500 drops to 711-727 (a real loss vs 831.58);
+501-750 stays essentially flat (836.14-836.61 vs 836.73). Sharpe improves
+substantially at lower allocation (9.05-9.15 vs 7.53) exactly as the
+temporary-pressure theory would predict, but the competition's score
+formula (mu*SR^2/(SR^2+1)) is already saturated at these Sharpe levels
+(all >7), so a Sharpe improvement this far past saturation buys almost
+nothing -- the fixed-fraction options are a net SCORE loss under this
+specific competition's objective, despite being sound general portfolio
+theory. Same conclusion applies to the "Conservative" (remove entirely)
+option, already measured in entry 21 (251-500 drops to 680.87).
+
+Verdict: theory and both empirical regime claims CONFIRMED; the specific
+AR-gated rule's aggregate result REPRODUCED but NOT block-consistent, and
+therefore NOT promoted -- consistent with, and independently corroborating,
+the source's own conclusion not to trust it yet. Neither de-risking
+alternative (Conservative, Moderate) is recommended either, because this
+competition's specific scoring function does not reward the Sharpe
+improvement they provide once already this deep into saturation. Sigma19's
+current full-size unconditional reversal remains, somewhat
+counterintuitively, the highest-scoring option among everything tested on
+the two available windows, despite having no more theoretical justification
+than before.
+
+Follow-up: traced the -512.9 losing block (501-750, block 2) day by day
+rather than leaving the verdict at "block-inconsistent, cause unclear."
+Days 545-565 sat in a positive-rho60 regime throughout (gate closed,
+c_t=0, ar_gated flat) -- the theory's own "reversal should fail here"
+signal. Self-reversal, trading straight through that supposedly unfavorable
+stretch, made roughly +$11,900 net across those 19 days. Day 571, gate
+still closed, self-reversal caught a standalone +$2,747 day the gated
+version sat out entirely.
+
+This is a direct empirical failure of the rule's specific operationalization,
+not unexplained noise: the premise "positive trailing-60-day AR(1) means
+temporary pressure is not decaying, so reversal should be gated off" did
+not hold in this stretch -- reversal kept working right through the period
+the gate had flagged as unfavorable. The underlying economic mechanism
+(temporary factor-level price pressure decaying, entry 27's theoretical
+framing) remains plausible and the aggregate historical regime-correlation
+(claim 1) is real -- but a 60-day trailing realized-autocorrelation
+estimate appears to be too slow and too noisy an instrument to time it day
+to day: by the time 60 days of returns have shifted the estimate into
+"positive regime, stand down," the actual pressure-decay state has often
+already moved on. This is a specific, mechanistic diagnosis (instrument-
+resolution mismatch between a slow 60-day estimator and a faster-moving
+underlying state) rather than a generic "insufficient evidence, wait for
+more data" verdict -- it explains WHY the gate helps in some blocks and
+actively costs money in others, and suggests any future attempt at this
+idea should look for a faster or more direct proxy for the pressure-decay
+state (e.g. shorter lookbacks, or a signal built from price-path shape
+rather than a lagging realized-autocorrelation statistic) rather than
+retuning the same 60-day window. Still not promoted -- this diagnosis
+does not fix the rule, it explains its failure -- but the earlier
+"earmarked for 751-1000, unclear why it's inconsistent" framing is
+superseded by this more specific conclusion.
+
+---
+
+Net including this entry: Sigma19 unchanged, still 832 (251-500) / 837
+(501-750). #27 confirms a source's theory and regime claims while
+correctly declining to promote its rule (block-level fragility
+independently corroborates the source's own self-audit), and adds a
+second candidate (AR-gated reversal) to the priority list for the
+751-1000 tie-break, alongside #23's relative reversal.
+
+---
+
+### 28. Robust birth guard committee (ChatGPT-authored, received as a complete Sigma20.py file) -- VALIDATED, promoted to Sigma20
+Background: a third-party (ChatGPT-authored) file arrived, structurally
+Sigma19 wrapped with a new post-processing overlay described as a "robust
+birth winner-guard committee." Conceptually related to the old rejected
+birth-catcher (recent-formation cointegration detection, entries 13/16/17)
+but a genuinely different mechanism: it can only FLATTEN a conflicting
+non-ALGO position (never open or reverse one), detection is an ensembled
+committee of 9 nearby recent-cointegration-formation definitions (3
+formation windows {120,150,180} x 3 median-t cutoffs {-3.25,-3.5,-3.75} x 3
+t-gap thresholds {1.0,1.25,1.5}, aggregated over a 5-day persistence
+window) requiring UNANIMOUS agreement before flagging a conflict, and
+suppression is a second committee of 9 "winner-protection" definitions
+(momentum-confirmation limit x lead-lag-support minimum) requiring at least
+5-of-9 agreement before actually flattening -- deliberately conservative,
+gated further by a 40-75% cross-sectional breadth filter, and never
+touches ALGO. Given how much machinery is bundled in (effectively 18
+threshold combinations plus a persistence and breadth filter), this
+warranted the full validation standard rather than trusting the "walk-
+forward validated" framing at face value, per this project's now-repeated
+experience with over-claimed ChatGPT-authored refinements (entries 11, 22).
+
+Method, stage 1 (correctness and cost): read the full mechanism line by
+line -- confirmed fully causal (the 5-day persistence history is
+reconstructed via `_rb_day_features(prices, nt-lag)`, always slicing
+strictly to data available lag days ago, no lookahead), confirmed reasonable
+per-day cost (daily, stateless recomputation of all ~1225 pairs at 3
+windows, unlike the rest of the book's RESCAN=20 cadence, but still
+tractable: a full 250-day backtest runs in under 30 seconds).
+
+Method, stage 2 (does it actually fire, or is this a fluke on a handful of
+trades): instrumented the full 750-day history -- 206 individual name-
+flatten events across 750 days, from 237 days where the committee found
+any nonzero unanimous direction out of 363 days where the breadth filter
+was even open. A real, non-trivial sample, not a lucky handful.
+
+Method, stage 3 (two-window score, own harness, verified against the
+faithful score.py accounting):
+                    251-500          501-750
+  Sigma19 baseline:  831.58           836.73
+  Sigma20:            846.48           853.43   (+14.9 / +16.7)
+Both windows improve, balanced, the same trustworthy shape as SigmaB10/
+Sigma18/Sigma19's own original validations.
+
+Method, stage 4 (block-level, 10 x 25-day blocks, both windows): Sigma20
+beats Sigma19 in 8/10 blocks on 251-500 and 7/10 on 501-750 -- clearly
+above coin-flip, and unlike the ALGO reversal's huge block swings (entry
+21), the per-block differences here are small and surgical (several
+blocks show exactly 0.0 difference, meaning the guard correctly stayed
+silent when it had nothing useful to add, rather than constantly firing).
+No single block dominates the aggregate result in either direction.
+
+Method, stage 5 (the decisive test -- parameter neighbourhood robustness,
+the exact check that killed the original birth-catcher's BGATE/BIRTHW and
+the ALGO reversal's horizon parameter): parametrized both strictness knobs
+(unanimity fraction required across the 9 detection definitions; minimum
+votes required across the 9 winner-guard definitions) and swept a 3x3 grid:
+                  guard>=4         guard>=5         guard>=6
+  unanimity 9/9:  846.48/854.16    846.48/853.43    846.48/853.43 (as-coded)
+  unanimity 8/9:  848.48/852.96    848.48/852.23    848.48/852.23
+  unanimity 7/9:  844.60/850.25    844.60/849.52    844.60/849.52
+All 9 configurations land in a tight band (844.60-848.48 on 251-500,
+849.52-854.16 on 501-750) -- no sign flips, no collapses, no isolated
+spikes, every single configuration clearly beats Sigma19 on both windows
+by a comfortable margin. This is a genuinely wide, stable plateau, the
+opposite shape of every parameter-fragility rejection found this session
+(birth-catcher's BGATE, the ALGO reversal's horizon, gray tier's GLO/GREC).
+
+Verdict: VALIDATED across every check applied this session -- correctness,
+firing frequency, two-window aggregate, block-level consistency, and
+parameter-neighbourhood robustness. This is the cleanest, most thoroughly
+corroborated result of the entire alpha-exploration process, arguably even
+more cleanly validated than the ag-vector (which required ablating a
+bundled file to isolate; this arrived as a clean, standalone addition and
+passed every test without modification). Promoted directly to Sigma20.py
+(Model List), no changes made to the received file. Not yet tested live.
+
+---
+
+Net including this entry: Sigma19 is superseded. Sigma20 is now the
+best-by-backtest model in the lineage: 846 (251-500), 853 (501-750),
+validated via the full standard (correctness, firing frequency, two-window
+score, block-level consistency, parameter-neighbourhood robustness) with
+zero exceptions found at any stage. #23's relative reversal and #27's
+AR-gated reversal remain earmarked as the priority tests for the 751-1000
+tie-break once that data lands, applied now against Sigma20 rather than
+Sigma19.

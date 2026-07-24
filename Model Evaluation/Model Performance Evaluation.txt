@@ -65,3 +65,9 @@ Sigma19
 	- Days 251-500: 832
 	- Days 501-750: 837
 	- Days 751-1000:
+
+Sigma20
+- Performance:
+	- Days 251-500: 846
+	- Days 501-750: 853
+	- Days 751-1000:
