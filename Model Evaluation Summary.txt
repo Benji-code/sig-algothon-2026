@@ -98,3 +98,15 @@ Sigma18
 	- Days 501-750: 825
 	- Days 751-1000:
 *Best-by-backtest model in the lineage as of this entry, beating everything on 251-500 outright and everything but Sigma17 on 501-750 (discounted, since Sigma17's number came paired with a worse 251-500 and is the worst live performer in the lineage). Sourced from a received ChatGPT-authored model (Sigma7p_robust_fit500.py in Model List), which bundled 7 changes together; ablated to isolate this one piece as responsible for ~69% of that file's out-of-sample improvement, neighbourhood-tested clean across threshold/weight/blend (19 configs, zero exceptions), then grafted onto SigmaB10's chassis and reconfirmed clean on both windows. Not yet tested live. See Alpha Exploration Log entry 11 for the full validation chain.
+
+Sigma19
+- Architecture:
+	- Same chassis as Sigma18 (seed pairs, gray tier GW=0.5, 90/10 expanding/recent lead-lag blend, ALGO-shock-conditional lead vector)
+	- Birth-catcher removed (BIRTHW=0). Gray tier tested for removal in the same pass but kept (removal hurt 501-750).
+- Exposure:
+	- Same as Sigma18: ALGO hedge off, plain 5-day reversal, full $100k cap
+- Performance:
+	- Days 251-500: 831.58
+	- Days 501-750: 836.73
+	- Days 751-1000:
+*RECONSTRUCTED, NOT INDEPENDENTLY VERIFIED. Sigma19.py was found already written in Model List/ (never committed to git) with a header claiming a full validation chain -- birth-catcher standalone isolation (no plateau found), gray-tier standalone isolation (also no plateau), and this full-book removal test -- attributed to Alpha Exploration Log entries 13/16/17. Those entries do not exist anywhere in this repo or its git history, so the underlying sweep data behind these claims is lost; only the summary claims in Sigma19.py's own header survive. The numbers above are transcribed from that header, not independently reproduced. Caveat from the header: block-level win rate on the birth-catcher-removal result was close to a coin flip (6/10 blocks on 251-500, 5/10 on 501-750) -- weaker evidence than the ag-vector or seed-pair findings. See Alpha Exploration Log entry 12 for the full reconstruction and caveats. Not yet tested live. Recommend independently re-scoring before treating this as the trusted lineage baseline.

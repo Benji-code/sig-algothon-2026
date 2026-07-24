@@ -439,9 +439,145 @@ still be treated as backtest-validated, not proven, until it has a live or
 
 ---
 
+### 12. Birth-catcher standalone isolation + full-book removal -- RECONSTRUCTED, now Sigma19
+
+**This entry is a reconstruction, not a firsthand record.** `Model List/Sigma19.py`
+was found already written, with a header comment describing entries "13",
+"16", and "17" of this log (birth-catcher standalone isolation, gray-tier
+standalone isolation, and a full-book ablation test). Those entries do not
+exist anywhere in this log, in git history for this log, or anywhere else in
+the repo, and Sigma19.py itself was never committed -- so whatever produced
+that numbered sequence is lost. What follows is a transcription of the claims
+in Sigma19.py's own header, consolidated into a single entry here under this
+log's actual next-available number. Treat every number below as an unverified
+secondhand claim from the candidate file about itself, not as independently
+reproduced analysis, until someone re-runs it.
+
+Claimed method: birth-catcher (BGATE, BIRTHW) had never been isolated
+standalone before. Both parameters were swept on their own; the claim is no
+plateau on either axis -- the as-coded values were lone spikes flanked by
+weaker or negative neighbours, i.e. no evidence of a real standalone edge.
+Separately, removing birth-catcher from the FULL Sigma18 book (a different
+question -- a weak piece can still help via diversification) is claimed to
+improve both windows:
+                Sigma18            Sigma19 (birth-catcher removed)
+  251-500 score:  821.71             831.58   (+9.9)
+  501-750 score:  825.41             836.73   (+11.3)
+Caveat carried over from the header, stated plainly rather than oversold:
+block-level win rate on this test was close to a coin flip (6/10 blocks on
+251-500, 5/10 on 501-750) -- the net aggregate favours removal on both
+windows, but this is a materially weaker result than the ag-vector or
+seed-pair findings, not the kind of broadly-dominant result those showed.
+
+The same claimed test also covered removing gray tier from the full book:
+251-500 slightly better, 501-750 much worse (-50.5) -- so gray tier was NOT
+removed, despite (per the claim) also failing its own standalone isolation
+test. Its marginal contribution to the full book is apparently positive even
+though it has no edge traded alone, consistent with a diversification effect
+rather than real signal. Do not remove gray tier without separately
+re-testing that specific change firsthand.
+
+Verdict: UNVERIFIED / RECONSTRUCTED. Promoted into Model Evaluation
+Summary.txt as Sigma19 with this caveat attached because the claimed result
+is directionally consistent with the rest of the lineage (balanced
+both-windows improvement, honestly-flagged weak spot rather than an
+oversold one) and because the file was already sitting in Model List/, but
+this should be treated as less trustworthy than any of entries 1-11 above
+until independently re-scored and, ideally, until the real entries 13/16/17
+are recovered or redone. Not yet tested live.
+
+---
+
 Net including this entry: 9 of 11 ideas rejected outright, 1 (algo_ridge_z)
 real but weaker/more concentrated than currently weighted, #9's underlying
 premise (seed-pair L-entry stability) real but unresolved on implementation,
 #10 genuinely inconclusive pending a third window, and #11 (this one) is
 the first and only fully VALIDATED positive result of the whole pass --
 promoted out of the log and into the live model lineage as Sigma18.
+
+---
+
+### 13. Five-round Track A push against Sigma19 -- ALL REJECTED, baseline unchanged
+
+Unlike entry 12, this entry is a firsthand record: run through the full
+three-agent loop (optimizer proposes + validates on 1-500, evaluator scores
+1-500 and the true 501-750 holdout, coordinator judges), with every baseline
+number cross-checked against Sigma19's own documented 831.58 / 836.73 before
+any candidate comparison was trusted. Baseline was `Model List/Sigma19.py`
+throughout; zero candidates were promoted.
+
+Round 1 -- cross-sectional trend/momentum overlay (rank non-ALGO names by
+trailing return, long winners/short losers) added atop the existing
+mean-reversion book. REJECTED on internal 1-500 folds alone: worse on 3 of 4
+folds, mean fold -2.8%, official 251-500 -9.6%. Never reached held-out eval.
+
+Round 2 -- idiosyncratic residual-after-2-factor-hedge self-mean-reversion,
+trading only names left over after pairs/gray tier claim theirs. REJECTED on
+internal folds: flat/noise-level (mean fold -0.24%, official window +0.32%,
+no consistent direction across a small parameter sweep). Never reached
+held-out eval.
+
+Round 3 -- binary/continuous volatility-regime gating or sizing applied to
+the existing signals (shrink or flatten exposure when short-term realized
+vol rises relative to its own baseline). First attempt produced a baseline
+251-500 score of 801.87 against the verified 831.58 -- traced to a harness
+bug (missing `.astype(int)` after `np.clip`, leaving fractional shares) --
+voided and rerun clean. Rerun: REJECTED, monotonic degradation across a full
+threshold sweep with no plateau anywhere in the swept range (worst fold
+469.73->340.51, official window 831.58->794.80 at the chosen gate). Clean,
+well-validated negative: this book's high-vol days are not disproportionately
+bad, gating removes otherwise-profitable days rather than avoiding losers.
+
+Round 4 -- moved the existing small-signal lead-lag threshold (LL_THRESH=
+0.04) from applying only to the minority 10%-weight recent-window component
+(baseline behaviour) to applying once, post-blend, so it also denoises the
+majority 90%-weight expanding-history component (`linear_full`), which
+baseline never filters at all. Reached full held-out eval. Internal folds:
+mean +9.2% but non-uniform (one fold -14.2%, two folds >+27%). Official
+251-500: 831.58->875.81 (+5.3%). Official 501-750 (true holdout): 836.73->
+751.55 (-10.2%), Sharpe genuinely down (7.53->6.55, not just mean). Block
+breakdown of 501-750 showed one ~62-day block driving the entire held-out
+gain and a different block erasing it and more (-33.0% in that block alone,
+~85% of the total held-out damage) -- the same instability shape Agent 1's
+own fold-235 outlier had already foreshadowed pre-holdout. REJECTED:
+overfit / regime-fragile.
+
+Round 5 -- same underlying idea as round 4 (denoise `linear_full`), redone
+to directly address round 4's failure mode: a soft/graduated shrinkage
+threshold instead of a hard cutoff, with its own separately-calibrated
+constant (LL_THRESH_FULL=0.008) chosen from the middle of a genuine
+multi-value plateau, after explicitly rejecting a higher, more
+attractive-looking value because it caused a sharp fold-level discontinuity.
+Internal folds: ALL FOUR improved, including the worst fold (+2.4%), mean
++6.2% -- a materially cleaner internal signal than round 4's. Official
+251-500: 831.58->840.20 (+1.0%, Sharpe flat 7.35->7.30). Official 501-750:
+836.73->764.30 (-8.7%), Sharpe -11.1% (7.53->6.69). Block breakdown showed
+the candidate losing in ALL FOUR 501-750 blocks, cumulative delta worsening
+monotonically and never reversing -- broader and, per both evaluating agents,
+a cleaner overfit signal than round 4's, since it isn't one bad patch
+canceling one good patch, it just doesn't generalize past day 500 at all.
+REJECTED: overfit.
+
+Verdict: NET NEGATIVE PUSH, baseline holds. Rounds 1-3 failed cheaply
+(internal folds, never reached holdout). Rounds 4 and 5 both targeted the
+same underlying idea -- that `linear_full`, the dominant 90%-weight
+expanding-history lead-lag component, is currently completely unfiltered and
+might benefit from denoising -- via two structurally different mechanisms,
+and both produced real, methodologically distinct 251-500/internal-fold
+gains that failed to generalize to 501-750, with two different failure
+shapes (regime-fragile single-block cancellation, then broad uniform
+non-reversing underperformance). This is a reasonably strong two-mechanism
+negative result for per-element thresholding/denoising of `linear_full`, not
+a "wrong constant" problem -- a third variant of the same idea (another
+cutoff function on `linear_full`) is not recommended without a genuinely
+different, economically-motivated rationale rather than another magnitude
+threshold. Two adjacent levers were never touched by either round and remain
+open if this area is revisited: the 90/10 blend weight itself between
+`linear_full` and `linear_recent`, and whether `linear_recent`'s own existing
+hard threshold (LL_THRESH=0.04) is well-calibrated on its own terms -- both
+sit adjacent to real (if ultimately overfit) signal found this push. Six
+candidate files remain in `Model List/candidates/` for reference
+(Sigma19_CrossSectionalMomentum.py, Sigma19_IdioResid.py,
+Sigma19_RegimeScale.py [voided attempt], Sigma19_VolGate.py [clean rerun],
+Sigma19_LLThreshPostBlend.py, Sigma19_LLFullSoftThresh.py); none promoted,
+`Model List/Sigma19.py` unchanged as Track A's best model.
