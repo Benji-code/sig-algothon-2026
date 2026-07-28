@@ -1977,3 +1977,2146 @@ zero exceptions found at any stage. #23's relative reversal and #27's
 AR-gated reversal remain earmarked as the priority tests for the 751-1000
 tie-break once that data lands, applied now against Sigma20 rather than
 Sigma19.
+
+---
+
+### 29. Sigma21_RecencyValidated (ChatGPT-authored, received as a complete file) -- REJECTED despite passing every check except the one that matters
+Background: a third-party file arrived, built on Sigma19 (not yet aware of
+Sigma20), making exactly two execution-estimation changes: seed pairs fit
+their hedge ratio/spread on the latest 200 days instead of 450 (WIN
+450->200), and gray-tier pairs fit on the latest 160 days instead of the
+full expanding history (previously fully unwindowed). Everything else
+(selection thresholds, LL matrix, ag-vector, ALGO reversal, weights, bands,
+rescan cadence) unchanged. The source's own disclosure was unusually
+honest -- explicitly flagged that days 501-750 "have been examined
+repeatedly and are no longer a pristine holdout," and that settings were
+chosen "near the centre of a broad neighbourhood rather than at the
+highest-scoring point." The user explicitly asked for caution and
+independent reconfirmation given this framing.
+
+Scored directly: 251-500 866.77, 501-750 904.24 -- a very large
+improvement over Sigma19 (+35.2 / +67.5), bigger than Sigma20's own gain.
+
+Ablation (own harness, isolating the two bundled changes): seed_win=200
+alone gives +16.5/+19.3; gray_win=160 alone gives +18.7/+48.3; both
+together give +35.2/+67.5 -- almost exactly additive (16.5+18.7=35.2 matches
+exactly; 19.3+48.3=67.6 nearly matches 67.5), a clean, well-behaved
+combination with no suspicious synergy.
+
+Neighbourhood sweep, seed_win (gray_win fixed at 160): every value from
+150 to 350 -- more than double the range -- beats Sigma19's baseline on
+both windows, no collapses, no sign flips (150: 851/864 ... 200: 867/904
+... 350: 847/901). One of the widest, most stable-LOOKING parameter
+plateaus found this session.
+
+Neighbourhood sweep, gray_win (seed_win fixed at 200): every value from
+100 to 250 plus fully unwindowed beats Sigma19's 501-750 baseline (826 to
+904 depending on setting), though 160 specifically sits as a local bump
+above the smooth trend implied by its neighbours (140: 853, 160: 904, 180:
+877) -- milder than a lone-spike rejection (neighbours are still solidly
+positive, not weak or negative), but not a perfectly flat plateau either.
+
+Everything above looked like a pass. Then the block-level check (10 x
+25-day blocks, both windows, the same standard applied to every other
+promoted change) reversed the verdict entirely:
+  251-500: Sigma21 beats Sigma19 in 4/10 blocks (WORSE than a coin flip)
+  501-750: Sigma21 beats Sigma19 in 5/10 blocks (exactly a coin flip)
+And the swings are enormous relative to anything validated this session:
+251-500 block 2 alone contributes +306.5, block 9 contributes +474.9 --
+together larger than the entire aggregate improvement -- while block 6
+loses -244.9 and block 8 loses -188.2. The whole aggregate gain is carried
+by two or three huge, concentrated blocks while the MAJORITY of blocks
+actually lose money relative to Sigma19. Contrast with Sigma20's own
+validation (entry 28): 8/10 and 7/10 blocks, small/surgical differences,
+several exactly 0.0 -- a broad, low-variance, consistent improvement. This
+is the opposite signature: below-coin-flip win rate, massive concentrated
+swings.
+
+Mechanistic read: shrinking a fitting window from 450/full-history down to
+200/160 days increases hedge-ratio and spread-estimation variance. That can
+produce a large, one-off payoff when the short window happens to diverge
+favourably from the long one during a specific historical stretch, without
+that divergence being a repeatable behavioural difference -- concentration
+risk dressed up as a smooth aggregate/parameter-sweep result, not genuine
+edge.
+
+Verdict: REJECTED, despite passing the aggregate two-window check and even
+a superficially wide parameter-neighbourhood sweep. Important methodological
+note for this project going forward: aggregate score plus a parameter
+sweep is NOT sufficient validation on its own -- a family of "few huge
+wins, many small losses" configurations can all show a similarly smooth
+aggregate response across a swept parameter, since they share the same few
+pivotal historical events. The block-level consistency check is the one
+that actually catches this, and every future candidate should be block-
+checked before promotion regardless of how clean the aggregate/neighbourhood
+picture looks. This also directly validates the user's instinct to demand
+extra caution on this specific file rather than trusting the source's
+disclosed diligence at face value. No candidate file built, no change to
+Sigma20.
+
+---
+
+Net including this entry: Sigma20 remains the best-by-backtest model: 846
+(251-500), 853 (501-750). Sigma21's window-shrinkage idea is rejected as
+concentration risk, not edge -- a instructive rejection that sharpens this
+project's own validation standard (block-level consistency is mandatory,
+not optional, even after a clean aggregate and neighbourhood result).
+
+---
+
+### 30. Recency weighting revisited properly: is Sigma19/20's current fit window (450/unwindowed) actually optimal? -- seed window looks fine, gray window has a real, modest, block-consistent improvement -- promoted to Sigma22
+Background: #29 rejected Sigma21's bundled window-shrinkage (seed 450->200,
+gray unwindowed->160) as concentration risk. That is a different question
+from "is the current default already the best choice" -- rejecting one
+bad bundle does not establish the current settings are optimal, only that
+this specific alternative fails. Tested properly: swept BOTH the aggregate
+score AND the block-level win rate at every point (the exact check that
+would have caught Sigma21 earlier, applied here from the start rather than
+as an afterthought).
+
+Method, seed_win (gray left at current default, unwindowed), moderate
+range around 450: every nearby value (350, 400, 425, 475, 500, 550) is
+either worse in aggregate, has poor block consistency (2/10, 3/10 -- same
+red flag as Sigma21, just smaller), or both. No configuration improves both
+windows with good block support simultaneously. Seed_win=450 looks close
+to optimal on this axis; nothing nearby robustly beats it.
+
+Method, gray_win (seed_win left at current default, 450), moderate then
+fine sweep: unlike seed_win, several values show a genuinely different,
+more trustworthy signature than Sigma21's rejected bundle -- modest
+aggregate gains (single digits to +30s, not Sigma21's +35/+67) paired with
+block consistency that stays at or above coin-flip:
+  gray_win=200: 251-500 +2.3 (blocks 6/10)   501-750 +11.6 (blocks 8/10)
+  gray_win=230: 251-500 +1.7 (blocks 6/10)   501-750 +28.6 (blocks 8/10)
+Fine sweep (170-320) confirmed this is a real region, not a single lucky
+point, though noisier than Sigma20's own validation: 210 dips to 3/10
+blocks on 251-500 sandwiched between two good neighbours (200, 220), and
+270-300 show decent block rates but a net-negative 501-750 aggregate
+(many small wins outweighed by a few larger losses) -- the opposite
+concentration pattern from Sigma21, milder, but still a reason not to push
+the window past roughly 230-250.
+
+Method, decisive check -- re-verified on the ACTUAL current best model
+(Sigma20, with the robust birth guard included), not just the older Sigma19
+base the effect was found on:
+                          251-500              501-750
+  Sigma20 (unwindowed):    846.48 (blocks 0/10)  853.43 (blocks 0/10)
+  + gray_win=200:          846.37 (blocks 6/10)  864.78 (blocks 8/10)
+  + gray_win=220:          852.61 (blocks 5/10)  875.07 (blocks 6/10)
+  + gray_win=230:          848.14 (blocks 6/10)  880.95 (blocks 8/10)
+gray_win=230 combined with Sigma20 gives the best balance: modest but real
+251-500 gain (+1.7, 6/10 blocks) and a solid, well-distributed 501-750 gain
+(+27.5, 8/10 blocks, no single block dominating -- largest individual
+block differences are -140.4 and +156.3, nothing close to Sigma21's -261
+to -512 magnitude swings carrying the entire result).
+
+Honest caveat on the weaker of the two windows: block-by-block inspection
+of 251-500 shows the 6/10 win rate is real but rides a thinner margin than
+it looks -- one block alone (-261.5) very nearly offsets the COMBINED gains
+of all six winning blocks (+434.1 vs -423.7 across the four losing blocks).
+This is a real, modest effect, much smaller in magnitude and much better
+block-supported than the rejected Sigma21 bundle, but it is not as
+bullet-proof as Sigma20's own validation (entry 28), which had zero
+exceptions anywhere in its grid. Stating this plainly rather than
+oversold, matching this project's standing practice (e.g. Sigma19's own
+birth-catcher-removal promotion, entry 17, carried a similar "close to a
+coin flip, not dominant" caveat and was still promoted as a genuine, if
+modest, improvement).
+
+Verdict: seed_win=450 stays unchanged (nothing nearby robustly beats it).
+Gray tier's fitting window is changed from fully unwindowed to
+GRAY_WIN=230, layered on top of Sigma20 (chassis and robust birth guard
+both unchanged). Built as Sigma22.py, verified the actual file reproduces
+848.14 / 880.95 exactly. Promoted as a modest, honestly-caveated
+improvement -- real and better-supported than the rejected Sigma21 bundle,
+but weaker evidence than Sigma20's own clean validation. Not yet tested
+live.
+
+---
+
+Net including this entry: Sigma20 is superseded. Sigma22 is now the
+best-by-backtest model in the lineage: 848 (251-500), 881 (501-750).
+Unlike Sigma20's validation, this one carries an explicit, disclosed
+caveat (251-500's block consistency rides a thin margin) rather than a
+clean pass -- promoted as a genuine but modest improvement, not a
+blockbuster one. #23's relative reversal and #27's AR-gated reversal
+remain earmarked as the priority tests for the 751-1000 tie-break once
+that data lands, applied now against Sigma22.
+
+---
+
+### 31. First genuinely new data point (days 751-1000) -- self-reported, NOT YET independently verified, provisional note only
+The user obtained results on days 751-1000 (own backtest; the actual price
+file is not available yet, expected in ~2 days) and recorded them in Model
+Performance Evaluation.txt:
+  Sigma18: 798      Sigma19: 806      Sigma20: 794      Sigma22: 796
+Notable and sobering: on this new window, Sigma19 beats BOTH Sigma20 and
+Sigma22, despite Sigma20's robust birth guard passing an unusually clean
+validation (zero exceptions across a 9-config neighbourhood sweep, strong
+block consistency) on the two windows it was checked against, and despite
+Sigma22's gray-window tweak also showing real, if more modest, block-level
+support. A single 250-day window is not itself conclusive -- block-level
+swings of 100+ points have been routine noise throughout this whole
+exploration process -- but it is a real, non-trivial data point in the
+opposite direction from every validation done so far, and it is exactly
+the kind of check this project always intended to use as the actual tie-
+breaker rather than a two-window parameter sweep, however clean that
+sweep looked.
+
+Per this project's standing rule (never trust a self-reported score
+without independent re-verification, applied consistently to every source
+this session including received third-party files), these numbers are
+being recorded here as PROVISIONAL, not confirmed. No lineage change is
+being made on this basis alone -- Sigma22 remains the best-by-backtest
+model on the two independently-verified windows. Once the actual day
+751-1000 price file is available, the following must happen, in order:
+  1. Independently re-verify these four numbers via the own harness before
+     trusting them at all.
+  2. Resolve the several items already earmarked for exactly this data
+     point: entry 10 (SigmaB10 vs the ALGOagree candidate), entry 23
+     (self-reversal vs relative reversal), entry 27 (AR-gated reversal).
+  3. Directly re-examine whether Sigma20's robust birth guard and Sigma22's
+     gray-window tweak still hold up, or whether their clean two-window
+     validation was itself a (methodologically sound, but still real) two-
+     window artifact -- this would be an important, humbling finding for
+     the project's own validation standard if confirmed, not just for
+     these two models specifically.
+No candidate file built, no change to Sigma22. Revisit this entry as the
+first item once real 751-1000 data lands.
+
+---
+
+### 32. Spectral (singular-value) shrinkage of the dense lead-lag matrix (ChatGPT-authored, received as "Sigma24_SpectralLL.py") -- REJECTED, decisively and cleanly
+Background: a third-party file arrived built directly against Sigma19 (not
+Sigma20/22), applying smooth singular-value shrinkage separately to the
+full-history and recent 450-day lead-lag matrices before blending, using
+`weight = s^p / (s^p + lam^p)` with `lam = scale * median(singular values)`.
+This is a genuinely well-motivated idea, in the same family as Ledoit-Wolf/
+random-matrix-theory covariance denoising, and structurally different from
+the earlier rejected L-boost (entries 9/14): that one inflated 14 specific
+entries BEFORE the shared normalization step, distorting every other name's
+effective z-score; this shrinks noise-dominated singular directions across
+the WHOLE matrix relatively more than dominant ones -- a real reweighting
+of structure, not a magnitude change normalization would simply cancel out.
+This was raised directly in response to the user's own suggestion to
+scrutinize the dense L matrix's own construction, which had never been
+re-validated with this session's block-level standard.
+
+Scored directly at the as-coded settings (scale=2.5, power=0.75):
+                        251-500          501-750
+  Sigma19 baseline:      831.58           836.73
+  Sigma24_SpectralLL:    783.02           883.48   (-48.6 / +46.7)
+Lopsided at face value -- the same wins-one-loses-the-other shape that has
+sunk several candidates this session. Rather than reject on this alone,
+swept both continuous hyperparameters (scale in {1,1.5,2,2.5,3,4,5,8,15},
+power in {0.25,0.5,0.75,1,1.5,2,3}) to check whether a different setting
+clears both windows.
+
+Result: decisive, not a lone spike either way. EVERY one of the 16 tested
+configurations shows 251-500 clearly and substantially below Sigma19's
+baseline (734.93 to 783.02, never once crossing back above 831.58),
+regardless of scale or power. 501-750 varies more (762.89 to 899.88) and
+sometimes beats baseline, sometimes doesn't, with no clean monotonic
+relationship to either parameter. This is not noise or an unlucky point --
+it is a completely consistent, one-directional trade-off across the ENTIRE
+swept parameter space: shrinking the matrix's smaller singular values
+always costs something real on 251-500, and only sometimes pays off on
+501-750.
+
+Verdict: REJECTED, decisively. The theoretical motivation (denoising a
+small-sample cross-correlation estimate) is sound in general, but the data
+does not support it here -- there is no configuration anywhere in the
+tested space that improves both windows, which is a stronger and cleaner
+rejection than most in this log (contrast with candidates that showed a
+plausible-looking spike or a genuinely close call). Likely explanation:
+some of the smaller-singular-value components that shrinkage treats as
+noise were carrying real, exploitable signal specifically relevant to
+251-500, so this is not simply "noise vs signal" the way RMT-style
+denoising usually assumes in this kind of application. No candidate file
+built, nothing consolidated into Sigma19. This does not preclude other,
+different refinements of the L matrix's own construction (LL_BLEND,
+LL_ROLL, LL_THRESH remain unexamined by this session's block-level
+standard) -- only this specific spectral-shrinkage approach is closed out.
+
+---
+
+Net including this entry: no change to the lineage. Sigma22 remains the
+best-by-backtest model on the two independently-verified windows (848 /
+881), pending the 751-1000 re-verification already queued in entry 31.
+Spectral shrinkage of the LL matrix is closed out as a dead end; the LL
+matrix's blend/threshold parameters (LL_BLEND, LL_ROLL, LL_THRESH) remain
+the next natural target if further core-mechanism refinement is pursued.
+
+Follow-up: an important discrepancy surfaced before the decomposition
+below. The source (ChatGPT) reported a detailed re-analysis with its own
+Sigma19 baseline of 791.93 (251-500) / 877.89 (501-750) -- neither number
+matches this project's own independently-verified Sigma19 baseline (831.58
+/ 836.73, reproduced dozens of times this session and the exact figure
+every other candidate has been benchmarked against). A ~40-point mismatch
+on the BASELINE itself, in opposite directions on each window, means
+whatever harness produced every downstream number in that report (its own
+block-breakdown, leave-one-block-out concentration check, and 98-config
+parameter-neighbourhood sweep) is not scoring the same file against the
+same data with the same accounting as this project's own eval.py-faithful
+harness -- the same failure mode as the earlier Sigma7p 802-vs-773
+discrepancy, now recurring on a different file from the same source. None
+of that report's specific relative-improvement numbers can be trusted
+until it can reproduce the real Sigma19 baseline exactly.
+
+Given that, the user asked for the underlying SVD/latent-mode idea to be
+decomposed on its own terms rather than trusting the source's own ablation
+table. Tested each structural variant independently through the own
+harness (verified byte-faithful: LL_SHRINK_MODE="none" reproduces Sigma19
+exactly, "separate" with keep-diag reproduces the original candidate's
+783.02/883.48 exactly), at the same as-coded scale=2.5/power=0.75:
+                            251-500          501-750
+  separate, keep diag:       783.02           883.48   (as-received)
+  separate, zero diag:       759.25           868.41
+  full_only, keep diag:      750.82           853.88
+  full_only, zero diag:      744.41           827.35
+  recent_only, keep diag:    822.33           822.27
+  recent_only, zero diag:    819.72           823.99
+  blended_only, keep diag:   779.99           871.31
+  blended_only, zero diag:   768.67           860.90
+Every single one of the 8 structural variants loses on 251-500 relative to
+Sigma19's baseline (831.58) -- there is no version of "where/how to apply
+the SVD shrinkage" that clears 251-500 at this hyperparameter setting.
+Zeroing the reconstructed diagonal makes every variant worse, confirming
+the source's own observation that the diagonal carries some real
+contribution. recent_only is the least damaging (small losses on both
+windows, -9/-14) but is not an improvement anywhere; full_only is the worst
+(loses clearly on both windows). separate and blended_only both reproduce
+the familiar lopsided shape (large 251-500 loss, 501-750 gain).
+
+Verdict: no isolable "good half" of this idea survived decomposition --
+the trade-off (discard something valuable specifically on 251-500 in
+exchange for inconsistent 501-750 gains) appears to be a property of
+applying SVD-based shrinkage to this LL matrix in any structural form
+tested, not an artifact of one specific implementation choice. Combined
+with the original 16-point hyperparameter sweep showing the same pattern
+across the full scale/power range, this closes out the spectral-shrinkage
+family more thoroughly than the initial rejection -- confirming there
+isn't a partial version worth grafting into Sigma19, not just that the
+as-received default setting fails. No candidate file built, nothing
+consolidated.
+
+Second follow-up, a sharper and more decisive test of the underlying
+question this whole investigation raised: does real alpha concentrate in
+a small number of dominant "sector-level" coordinated lead-lag patterns
+(the largest singular value modes), or is it distributed across the full
+relationship structure? Smooth shrinkage conflates two things (relatively
+preserving large modes AND relatively suppressing small ones), so it
+cannot cleanly answer this. Tested hard rank truncation instead: keep only
+the top-k singular vectors/values, zero everything else, and separately,
+drop only the top-k and keep the rest (sanity-verified: top-k at full rank
+reproduces Sigma19 exactly, 831.58/836.73).
+
+Top-k (keep only the k dominant "sector" modes):
+  k=1:  667.04 / 674.96     k=8:  632.16 / 781.56    k=18: 778.58 / 855.64
+  k=35: 807.20 / 858.38     k=45: 833.20 / 840.26    k=50 (full): 831.58 / 836.73
+Performance is substantially degraded at every k below roughly 40-45 out of
+~50 -- a generous handful of dominant modes (even k=25, half the full
+rank) is nowhere close to sufficient, and scores only converge back to
+baseline once nearly the ENTIRE rank is retained.
+
+Bottom-k (drop only the top-k dominant modes, keep the rest):
+  drop top 1:  712.95 / 718.65     drop top 5:  524.12 / 511.54
+  drop top 12: 568.40 / 433.81
+Dropping even just the single most dominant mode causes a large loss --
+the top mode is not a discardable artifact either.
+
+Verdict: decisive and clean. There is no small set of dominant, sector-
+level coordinated patterns where the real alpha concentrates -- removing
+the top modes hurts badly, and keeping ONLY the top modes (discarding
+everything else) also hurts badly, all the way up to needing nearly the
+full rank of the matrix to recover baseline performance. This directly
+confirms and sharpens the Grinold's-Law breadth finding from entry 9: this
+dataset's edge comes from aggregating a very large number of individually
+weak, low-persistence relationships, not from identifying a few strong,
+coordinated group-level ("sector") patterns. Any future idea premised on
+"find the dominant coordinated clusters and act on those" should be
+treated with strong prior skepticism given this result. No candidate file
+built, nothing consolidated into Sigma19.
+
+---
+
+### 33. Multi-name (basket-vs-basket) cointegration -- REJECTED, decisively, on two independent grounds
+Background: the user raised a genuinely distinct hypothesis from #32's
+finding -- real markets can show SECTOR-level reversion, where a basket of
+several names (e.g. ABC) is jointly cointegrated with a different basket
+(e.g. DEF), even if no individual pairwise combination shows strong
+cointegration alone. This is a real, established concept (multivariate/
+Johansen-style cointegration) and genuinely untested by anything in this
+project so far -- seeds are hardcoded pairs, gray tier scans pairwise
+combinations, birth-catcher is pairwise-recent, and #32's rank-truncation
+test was about RETURN cross-correlation structure (L matrix), not PRICE-
+LEVEL basket cointegration. This is a different statistical object.
+
+First check (cheap, using existing code): does the model's own already-
+computed PC1 factor -- a basket by construction, currently only
+residualized out as noise -- show genuine price-level mean-reversion on
+its own? Tested via the same AR1-t stationarity test seeds use, at six
+snapshots (day 250-499): t-stats ranged -0.30 to -1.54, nowhere near the
+-2.5 keep threshold. The single dominant market-wide basket is not
+mean-reverting -- but this only tests one specific (very broad) basket,
+not the user's actual "small group vs small group" hypothesis.
+
+Method, direct test: formed 16 small candidate baskets (2-3 names each)
+via greedy correlation-based clustering of ALGO-residualized returns
+(numpy only, no scipy), then tested every basket-vs-basket combination for
+cointegration the same way gray tier tests pairs (OLS residual AR1-t).
+Initial result (day 500 snapshot) looked promising: top hits reached
+t=-3.818, and 131/240 combinations cleared the seed-pair threshold (-2.5),
+23/240 cleared the gray-tier threshold (-3.4) -- a materially higher hit
+rate than gray tier's own pairwise scan typically shows (~1-2% of all
+possible pairs). This alone was NOT trusted, per this project's standing
+rule against single-snapshot conclusions.
+
+Validation test 1, persistence (same method as entry 9, which separated
+seed pairs 0.343 from gray tier -0.019): fixed cluster membership (formed
+once using full 1-500 data), then computed basket-pair t-stats
+INDEPENDENTLY within two non-overlapping halves (days 1-250, 251-500) and
+correlated the two t-stat vectors across all 240 basket-pairs.
+Result: correlation = -0.198 -- WORSE than gray tier's already-poor
+persistence, nowhere near seed pairs'. The top-10 strongest half1 basket
+pairs (t=-3.5 to -4.3) decayed substantially in half2 (down to -1.6 to
+-2.8), a textbook regression-to-the-mean signature.
+
+Validation test 2, false-positive rate under a correlated random-walk null
+(the exact fix this project already had to make once before for pairwise
+cointegration gates -- iid noise is the wrong null, correlated-through-
+shared-volatility random walks are correct): ran the IDENTICAL clustering
++ basket-cointegration procedure on 50 independent random-walk simulations.
+Result: the null simulations produced a HIGHER false-positive rate than
+the real data -- 46.8% of random-walk basket-pairs cleared -2.5 (vs 37.1%
+real), 11.0% cleared -3.4 (vs 6.7% real). Pure noise, run through this
+exact test design, looks MORE cointegrated than the actual market data.
+
+Verdict: REJECTED, decisively, on both grounds independently. The root
+cause is identifiable and important: the greedy correlation-clustering
+step itself manufactures spurious structure -- choosing which names to
+group based on which happen to correlate most strongly, then testing the
+resulting groups for cointegration, is a multiple-comparisons trap (double-
+dipping into the same data for both selection and confirmation), a more
+severe version of the exact statistical issue already fixed once for the
+pairwise gray-tier scan. This does not rule out every conceivable way of
+testing multi-name cointegration (a properly-specified Johansen test, or
+baskets formed from genuine sector/domain knowledge rather than data-mined
+correlation clustering, could behave differently and were not tested), but
+it does rule out this specific, natural operationalization of the
+hypothesis, and the null-simulation result is a strong prior against any
+basket-formation method that searches over many candidate groupings before
+testing them. No candidate file built, nothing consolidated into Sigma19.
+
+---
+
+Net including this entry: no change to the lineage. Sigma22 remains the
+best-by-backtest model on the two independently-verified windows (848 /
+881), pending the 751-1000 re-verification queued in entry 31. Together,
+entries 32 and 33 rule out two structurally different "coordinated group-
+level" alpha hypotheses (dominant spectral modes, and data-mined basket
+cointegration) -- both fail, for different but related reasons, further
+reinforcing that this dataset's exploitable structure is genuinely diffuse
+and pairwise/idiosyncratic rather than concentrated in group-level
+patterns.
+
+---
+
+### 34. Stable correlation-based "sectors" -- VALIDATED as real, but no tradeable mechanism found; predicted grouping recorded
+Background: follow-up to #33's rejection. The user pointed out that #33's
+test conflated two different things -- data-mined basket COINTEGRATION
+(which failed) is a stricter, different property than basket CORRELATION/
+co-movement stability (whether stable groupings exist at all). Re-tested
+the weaker, more basic property properly, avoiding #33's exact flaw:
+formed clusters using ONLY days 1-250, then tested that SAME frozen
+membership for cohesion in the fully independent days 251-500 -- one
+look, not a search, so no multiple-comparisons exposure.
+
+Result: real and strong. Out-of-sample within-cluster correlation was
+0.268 (only modestly decayed from 0.307 in-sample), versus a random-
+grouping baseline of 0.201 +/- 0.0105 across 200 simulations -- z=6.43,
+100th percentile. Stable, sector-like correlation groupings genuinely
+exist in this dataset. Predicted grouping (16 clusters, formed from days
+1-250, 2-3 names each):
+  [33,42,3] [36,43,41] [7,46,14] [24,35,30] [9,45,44] [29,31,47]
+  [12,49,50] [2,11,27] [1,28,34] [26,32,19] [18,37,21] [23,38,22]
+  [4,5,6] [16,40,10] [15,20,8] [17,48,39]
+
+Follow-up test, within-cluster mean-reversion (does a name's deviation
+from its own stable cluster average revert): real in aggregate (half1
+mean AR1-t -2.489, half2 mean -2.785, both well past the seed-pair keep
+threshold on average across the population) but weak at the individual-
+name level (persistence correlation 0.094 between which specific names
+revert strongly in each half -- better than gray tier's -0.019 and
+basket-cointegration's -0.198, but far below seed pairs' 0.343).
+
+Built as a real, fixed-cluster (SEED_PAIRS-style, never re-searched)
+standalone strategy and tested with the full standard:
+  Standalone, faithful two-window score: 251-500 sharpe=0.61 (6/9 blocks),
+    501-750 sharpe=2.09 (7/9 blocks) -- both positive, majority-block-
+    consistent, but lopsided in magnitude between windows.
+  Marginal contribution to the current best model (Sigma22), weight swept
+  0.10-2.00: DECISIVE, MONOTONIC REJECTION at every weight -- both windows
+  worse at every setting, block consistency below coin-flip immediately
+  (3/10 at the smallest weight) and degrading further as weight increases.
+  Checked whether this was simple redundancy with the existing book
+  (correlation of standalone sector PnL vs rest-of-book PnL): near zero
+  (-0.034, +0.056) -- ruling out the easy "it's just duplicating L" story.
+  Tested a core-exclusion refinement (skip names already claimed by seeds/
+  gray, mirroring this codebase's own pattern for combining pairwise
+  signals without overlap): reduced the damage but did not fix it -- still
+  decisively negative at every weight tested (0.10-1.00).
+
+Verdict: the underlying phenomenon (stable sector-like correlation
+groupings) is VALIDATED as real, cleanly, out-of-sample -- this directly
+confirms the user's original premise. But no tradeable mechanism built on
+it, across four genuinely different approaches (basket-vs-basket
+cointegration in #33, within-cluster reversion standalone, simple additive
+integration, core-excluded integration), survives contact with the real
+two-window + block-level standard. The signal appears to be real but too
+weak, and its integration with an already-tuned book too costly in
+conflicting turnover, to be worth incorporating. No candidate file built,
+nothing consolidated into Sigma19/22. The predicted sector grouping above
+is recorded as a validated, standalone finding for future reference, not
+attached to any working trading mechanism.
+
+---
+
+Net including this entry: no change to the lineage. Sigma22 remains the
+best-by-backtest model on the two independently-verified windows (848 /
+881), pending the 751-1000 re-verification queued in entry 31. Across
+entries 32-34, three genuinely different group-level alpha hypotheses were
+tested this round (dominant spectral modes, data-mined basket
+cointegration, and validated-stable-cluster reversion) -- the third came
+closest to real (the underlying grouping structure is genuinely validated)
+but still does not clear the bar for incorporation. This dataset's
+tradeable structure continues to look diffuse and pairwise/idiosyncratic
+rather than concentrated in group-level patterns, now checked from three
+independent angles.
+
+---
+
+### 35. Full resolution of the Sigma24_SpectralLL / ChatGPT baseline discrepancy (entry 32), and a decisive test of the source's own follow-up regime hypothesis
+Background: the source (ChatGPT) returned a detailed correction after
+being confronted with entry 32's baseline mismatch, attributing its
+earlier error to two concrete, identifiable bugs in its own harness --
+omitted commissions, and a continuous day-1 replay instead of the official
+evaluator's cold-start-at-day-250/500 state path (which matters because
+Sigma19 is stateful and rescans every 20 days, so a different replay start
+puts the rescan phase out of alignment with the official one). It reported
+a corrected Sigma19 baseline of 831.5828 / 836.7265 -- exactly matching
+this project's own long-standing verified numbers -- and reproduced
+Sigma24's 783.02 / 883.48, matching entry 32's own findings exactly.
+
+Verification, not just acceptance: (1) computed the SHA-256 of this
+project's own Sigma19.py -- matched the source's reported hash exactly,
+confirming byte-identical files; (2) re-scored Sigma19.py on both windows
+independently to full decimal precision -- matched 831.582763 / 836.726529
+exactly (the first attempt showed a spurious mismatch on 501-750 caused by
+a bug in the verification script itself, reusing model state across both
+windows in one process instead of the required fresh-process-per-window
+isolation; fixed and reconfirmed). Both the file identity and the score
+are now independently, fully verified. This resolves entry 32's baseline
+discrepancy completely -- it was a genuine harness bug on the source's
+side, now identified, explained, and corrected, not a dispute about whose
+methodology was right.
+
+The source also proposed a falsifiable spectral-regime hypothesis: spectral
+shrinkage should help when the LL matrix's spectrum is concentrated in
+fewer temporally-stable modes and the full/recent matrices disagree
+substantially, and hurt when the spectrum is diffuse and the two raw
+matrices already agree closely. It reported supporting diagnostics
+(top-10 energy share, effective rank, full/recent cosine similarity,
+temporal stability of the top singular vectors) differing between windows
+in the predicted direction, while honestly flagging that within-window
+correlations with incremental P&L were weak.
+
+Independently re-implemented all four diagnostics from scratch (own
+L-matrix code, not copied from the source) and computed them at every
+20-day rescan across both windows:
+                              251-500    501-750
+  top10 energy share:          62.79%     65.08%
+  effective rank:               24.95      23.37
+  full/recent cosine sim:       0.958      0.840
+  temporal stability:           0.883      0.952
+These match the source's reported table almost exactly (their 62.83%/
+65.08%, 24.90/23.37, 0.957/0.840) -- independent confirmation the
+diagnostic computation itself is real and correctly implemented, not
+fabricated, and that the average regime genuinely differs between windows
+in the direction the hypothesis predicts.
+
+Decisive test: does any of these diagnostics predict INCREMENTAL Sigma24-
+minus-Sigma19 P&L at the 20-day rescan-block level, WITHIN each window --
+not just as a two-point average difference between the only two windows
+available, which is exactly the kind of thin evidence this project has
+repeatedly found to be a trap (single train/test splits, two-window
+parameter sweeps, etc.):
+                              251-500 corr    501-750 corr
+  top10 energy share:            -0.158           0.000
+  effective rank:                -0.075          -0.004
+  full/recent cosine sim:        +0.044          -0.035
+  temporal stability:            -0.475          -0.068
+501-750 shows essentially ZERO correlation across every diagnostic -- none
+of them predict which blocks Sigma24 wins within that window. 251-500
+shows one moderate correlation (temporal stability, -0.475) but with the
+WRONG SIGN relative to the between-window hypothesis (which predicts high
+stability should favour Sigma24; within-window it does the opposite).
+
+Verdict: the baseline/harness discrepancy is fully and cleanly resolved
+(genuine bug, now fixed, independently confirmed via hash + full-precision
+score match). The regime hypothesis is real as a two-point average
+difference (independently confirmed, not fabricated) but has ZERO
+demonstrated predictive power once tested at the level where it would
+need to work to be exploitable -- this is a stronger and more complete
+basis for rejection than entry 32's original finding, not merely a
+repeat of it. Sigma24_SpectralLL remains REJECTED. The user's separately-
+reported live score (~912-926 on days 751-1000) remains unexplained by
+anything found in this investigation -- not ruled out as real, but nothing
+here supports treating it as a validated, exploitable pattern rather than
+an anomaly pending the actual 751-1000 price data. No candidate file
+built, nothing consolidated into Sigma19/22.
+
+---
+
+Net including this entry: no change to the lineage. Sigma22 remains the
+best-by-backtest model on the two independently-verified windows (848 /
+881); Sigma19 remains the reference baseline per explicit user instruction
+pending 751-1000 re-verification. The Sigma24_SpectralLL investigation is
+now closed with full resolution on both the numerical discrepancy and the
+follow-up regime hypothesis -- a rare case in this log where a third-
+party's self-correction was itself independently verified and found
+genuinely accurate, while its proposed explanatory mechanism was tested
+and found not to hold up.
+
+---
+
+### 36. Causally-gated spectral LL shrinkage (ChatGPT-authored, received as a complete "Sigma19" file) -- VALIDATED, promoted to Sigma23
+Background: entry 35 closed out the plain, always-on spectral-shrinkage
+candidate as decisively rejected, but also found its underlying regime
+story was real (independently confirmed) even though a static, lagging
+diagnostic had zero within-window predictive power. A follow-up file
+arrived proposing a genuinely different mechanism: instead of shrinking
+the LL matrix's singular values at a fixed strength always, gate the
+shrinkage causally using an EMBEDDED walk-forward cross-validation check
+(`_cv_advantage`) -- at every 20-day rescan, hold out the trailing 40 days,
+fit both the raw and spectral-shrunk matrices using only data strictly
+before the holdout, and measure whether the spectral version actually
+forecasts the held-out days better than the raw one, using cross-sectional
+cosine similarity between predicted and realized residual returns. This is
+combined multiplicatively with a structural gate (full/recent matrix
+disagreement, scaled between the same 0.86/0.97 cosine thresholds
+independently verified in entry 35, times temporal stability of the
+dominant singular vectors between consecutive rescans) to produce a smooth
+0-1 blend weight (`spectral_alpha`) between the raw and spectral-shrunk LL
+matrices. Built directly on Sigma19 (not Sigma20/22), matching this
+project's current baseline convention (entry 31).
+
+Method, stage 1 (correctness): traced the CV holdout indexing by hand --
+the LL matrices are fit only on `z[:,:cut]` (strictly before the 40-day
+holdout), and evaluated only against realizations at or after `cut` that
+were never used in fitting. No lookahead found. The structural gate uses
+only the current and PREVIOUS rescan's matrices, also fully causal.
+
+Method, stage 2 (does the gate actually track the known regime):
+instrumented the full 750-day activation trace. The gate reads EXACTLY
+ZERO for the entire 251-500 window (first nonzero activation is day 500),
+then ramps up, reaching full strength (alpha=1.0) by day 660 and staying
+there through day 749 -- this lines up precisely with entry 35's own
+independently-verified finding that 251-500 has a diffuse spectrum and
+high full/recent agreement (shrinkage should not help there) while
+501-750 becomes progressively more concentrated and stable (shrinkage
+should help more). The gate is reconstructing this regime distinction
+causally, from data available at the time, without being told the answer.
+
+Method, stage 3 (two-window score, own harness, full decimal precision):
+                    251-500          501-750
+  Sigma19 baseline:  831.5828         836.7265
+  Sigma23:            831.6486         902.3404   (+0.07 / +65.6)
+251-500 is essentially untouched (the gate correctly stays off); 501-750
+improves by MORE than the plain always-on candidate's own +46.76, while
+avoiding that candidate's entire -48.56 loss on the other window.
+
+Method, stage 4 (block-level, 10 x 25-day blocks, both windows): 251-500
+shows 8 of 10 blocks at an EXACT 0.0 difference from Sigma19 (the ninth
+shows a negligible +0.7) -- essentially risk-free on this window, not just
+net-neutral. 501-750 shows 7/10 blocks positive; the largest single block
+gain (+219.9) is about 30% of the total positive contribution across
+winning blocks, not a dominating share; three losing blocks are modest
+(-8.1 to -45.4) relative to the gains.
+
+Method, stage 5 (parameter-neighbourhood robustness, the decisive check
+that has separated genuine plateaus from lone spikes throughout this
+project): swept all three gate threshold pairs independently -- CV gate
+bounds (6 configs), structural cosine bounds (5 configs), temporal
+stability bounds (5 configs), 16 configurations total:
+  CV bounds:      251-500 range 831.58-834.25 (never below baseline)
+                  501-750 range 885.96-902.34 (+49.2 to +65.6, always up)
+  cosine bounds:  251-500 range 828.68-831.65 (worst case -2.9)
+                  501-750 range 890.90-902.34 (+54.2 to +65.6, always up)
+  stability bounds: 251-500 range 831.58-831.65 (essentially unchanged)
+                    501-750 range 889.51-902.57 (+52.8 to +65.8, always up)
+Every single configuration leaves 251-500 essentially untouched and
+improves 501-750 substantially -- a genuinely wide plateau, not a lone
+spike, comparable to or exceeding the ag-vector's and the robust birth
+guard's own neighbourhood validations.
+
+Verdict: VALIDATED across every check applied this session -- correctness,
+regime-tracking sanity check, two-window score, block-level consistency,
+and a 16-configuration parameter-neighbourhood sweep with zero exceptions.
+This is one of the cleanest results in the project's history: unlike the
+plain spectral-shrinkage candidate (decisively rejected) or Sigma21's
+window-shrinkage bundle (rejected as concentration risk despite a clean-
+looking aggregate), this file solves the exact problem that sank its
+predecessor by gating the same mechanism with a genuinely causal,
+embedded validation check rather than a fixed always-on application.
+Promoted to Sigma23.py (Model List), built on Sigma19 per the current
+baseline convention, not yet tested live.
+
+---
+
+Net including this entry: Sigma23 is the new best-by-backtest model
+relative to the Sigma19 baseline: 832 (251-500), 902 (501-750) -- a larger
+501-750 improvement than Sigma22's own (+65.6 vs +44.2 relative to
+Sigma19), achieved with a cleaner, more thoroughly validated mechanism and
+without Sigma22's thin-margin 251-500 caveat. Given the current baseline
+convention treats Sigma19 (not Sigma22) as the reference point pending
+751-1000 re-verification, Sigma23 and Sigma22 have not yet been directly
+compared or combined -- that comparison, along with re-verifying all of
+Sigma19/22/23 (and the still-unresolved plain Sigma24_SpectralLL's live
+751-1000 claim) against the real 751-1000 data, remains the top priority
+once that data lands.
+
+Update same day: the user separately reported Sigma23 scored ~833 on the
+same live/751-1000 window where Sigma18=798, Sigma19=806, Sigma20=794,
+Sigma22=796 (all self-reported, none independently verified yet -- see
+entry 31). Notable: Sigma23 is the FIRST of the four models tested on
+that window to show a POSITIVE delta over Sigma19 (+27), while both
+models carrying the robust birth guard (Sigma20, Sigma22) went negative
+despite passing cleaner two-window backtest validation than anything
+before them. Consistent with Sigma23's gate being a genuinely causal,
+embedded validation mechanism rather than a static two-window-fit
+regime story -- encouraging, but still provisional pending independent
+verification with the real price data.
+
+---
+
+### 37. Gray-tier windowing combined with Sigma23 -- REJECTED, lone spike not a plateau
+Background: natural follow-up given the live 833 result -- does Sigma22's
+own validated gray-tier-window tweak (GRAY_WIN=230, entry 30, built on
+Sigma20) also help when combined with Sigma23 (built on plain Sigma19,
+no birth guard) instead? Tested directly rather than assumed.
+
+Method: added the same GRAY_WIN windowing to Sigma23's gray-tier trading
+(verified byte-faithful: GRAY_WIN=None reproduces Sigma23 exactly,
+831.6486/902.3404), swept a broad range (110-300) plus a fine sweep around
+the apparent best point (110-170).
+
+Result: 251-500 is robustly positive across almost the entire range
+tested (+1.7 to +37.3, only one dip below baseline at gray_win=250). But
+501-750 is NEGATIVE almost everywhere (-57.1 at 110, -36.7 at 130, -25.6
+at 140, -28.1 at 200, -19.3 at 250), with only a narrow, isolated bump
+around gray_win=150-160 (+8.7 at 160, sandwiched between 150's -2.0 and
+170's -12.0) and a small secondary near-zero point at 230 (+0.2).
+
+Verdict: REJECTED. This is the lone-spike-surrounded-by-negative-
+neighbours signature that has killed several candidates in this log
+(birth-catcher's BGATE, the ALGO reversal horizon) -- weaker and less
+plateau-like evidence than what supported Sigma22's own version of this
+same tweak on Sigma20 (entry 30), which had solidly-positive, not
+negative, neighbours. The apparent gain at gray_win=160 looks like a
+lucky point in an unstable neighbourhood, not a robust effect. Sigma23
+stands on its own; gray-tier windowing does not stack with it. No
+candidate file built, no change to Sigma23.
+
+---
+
+Net including this entry: Sigma23 remains the best-by-backtest model
+relative to the Sigma19 baseline (832/902), and now also the only model
+with a POSITIVE live delta over Sigma19 among the four self-reported
+751-1000 numbers available (+27, still unverified). Gray-tier windowing
+does not generalize as an add-on beyond the specific Sigma20/22 context it
+was originally validated in.
+
+---
+
+### 38. Momentum, in every form tested -- REJECTED, confirmed against both the prior and current best models
+Background: an external, unverified claim (a Discord report of moving from
+rank ~200 to top 10 "with just pairs and momentum") prompted a full check
+of whether this project's own book uses, or should use, any form of
+momentum. Single-name trend-following was already rejected twice before
+this session's later work (entries 5, 8 in the earlier log numbering).
+Tested the remaining, more specific interpretation -- classic cross-
+sectional rank momentum (long recent winners, short recent losers) -- from
+scratch.
+
+Method, stage 1 (forecast quality): causal cross-sectional IC between
+trailing N-day ALGO-residualized return and next-day return, days 120-499,
+lookbacks 3 to 120 days. Result: IC is NEGATIVE at every single lookback
+tested (-0.009 to -0.029) -- this dataset rewards cross-sectional
+REVERSAL, not momentum, at every horizon checked. Momentum itself is
+closed out here; the mirror-image reversal strategy was tested next since
+the diagnostic pointed that direction.
+
+Method, stage 2 (standalone reversal backtest, faithful two-window score,
+long bottom quintile / short top quintile): lookback sweep showed real
+noise at short lookbacks (10 and 20 went NEGATIVE on 501-750) but a
+genuinely promising region around lookback=60 -- both windows positive
+(Sharpe 1.54 / 1.67), strong block consistency (8/10, 9/10).
+
+Method, stage 3 (marginal contribution, tested TWICE -- once against the
+then-current best model Sigma22, then re-verified against the actual
+current best model Sigma23 after Sigma23 superseded it mid-investigation):
+weight swept 0.10-2.00 in both cases.
+  On Sigma22: both windows worsen monotonically at every weight; block
+    consistency falls to 0/10 on 501-750 at weight>=0.75.
+  On Sigma23 (re-verification, sanity-checked to reproduce 831.6486/
+    902.3404 exactly): confirmed and if anything MORE decisive -- 501-750
+    collapses at every weight (score down to 536 from baseline 902,
+    blocks literally 0/10 at four of seven weights tested), while 251-500
+    is a mixed, weak bag (a couple of weights show small gains). The
+    standalone-promising signal fails on both the prior and current best
+    models, with the current model's clean 501-750 spectral-gate
+    advantage being exactly what gets destroyed.
+
+Verdict: REJECTED, with high confidence, cross-validated against two
+different underlying books. Same failure signature as entry 34's sector-
+reversion signal (real, block-consistent standalone edge that actively
+conflicts with the existing book rather than complementing it) --
+consistent with this project's now well-established finding that this
+dataset's tradeable structure is diffuse, pairwise, and already close to
+fully captured by seeds/gray/L; late-arriving signals that trade the same
+generic mean-reversion property as the existing book, no matter how they
+are constructed, tend to introduce conflicting turnover rather than new
+information. The external Discord claim does not transfer to this
+dataset's actual structure. No candidate file built, no change to Sigma23.
+
+---
+
+Net including this entry: no change to the lineage. Sigma23 remains the
+best-by-backtest model. Momentum (both single-name and cross-sectional)
+and its mirror-image cross-sectional reversal are now fully closed out,
+tested to a high standard of confidence across two different underlying
+books.
+
+---
+
+### 39. ChatGPT parallel lineage batch, part 1 -- Sigma34 and Sigma36 variants, verified but REJECTED as replacements for Sigma23
+Background: the user has been running an independent research program with
+ChatGPT in parallel, producing a longer lineage (Sigma25 through Sigma42)
+with self-reported live 751-1000 scores as high as 945, against my own
+best independently-built/validated model (Sigma23) reaching ~833 on the
+same self-reported window. Before revealing the real 751-1000 price data,
+the user asked for a full from-scratch evaluation of every file in this
+lineage with the same rigor applied everywhere else in this log: verify
+file identity, independently re-score directly via this project's own
+score.py, and compare honestly against Sigma23 rather than trusting any
+claimed number.
+
+Method: for each file, computed SHA-256 and compared against the value
+given in its accompanying report, then ran score.py on both 251-500 and
+501-750 windows using the exact same harness and price data used
+throughout this log.
+
+Sigma34_CombinedLiveAlphas (built on a Sigma25-style asymmetric spectral
+core, LL_FULL_SV_SCALE=1.6/POWER=0.70 for the expanding matrix vs
+LL_RECENT_SV_SCALE=3.0/POWER=0.95 for the fixed 450-day recent matrix,
+plus a sparse robust-residual restoration and the Sigma25DG death-guard
+overlay): hash matched the report exactly. Score reproduced to within
+0.01 of the report's claimed figures: 251-500=769.97, 501-750=961.64.
+
+Sigma36_RobustChallenger and Sigma36_1K_AGOverruleArbiter (both add a
+narrow "AG-overrule contradiction arbiter" on top of frozen Sigma34,
+rerouting positions where ordinary LL forecast opposes the AG-shocked
+forecast, the AG shock wins, but the final margin stays weak and seed/
+gray does not strongly defend): both use a benign exec()-based pattern to
+embed two full component-model source files as strings and run them in
+isolated namespaces; grepped for exec/eval/__import__/subprocess/socket/
+os./requests/urllib beyond the two expected exec calls -- none found, not
+a security concern. Both scores reproduced exactly: Robust 251-500=822.79/
+501-750=983.85, 1K 251-500=812.79/501-750=1003.05.
+
+All three numbers are real and independently confirmed, not fabricated --
+a reassuring contrast to earlier session instances where self-reported
+ChatGPT numbers needed correction. But compared against Sigma23
+(831.6486/902.3404), none is a strict improvement:
+  Sigma34:        -61.68 (251-500)   +59.30 (501-750)
+  Sigma36 Robust:   -8.86 (251-500)  +81.51 (501-750)
+  Sigma36 1K:      -18.86 (251-500) +100.71 (501-750)
+All three trade away confirmed 251-500 strength for a larger 501-750
+number -- the same lopsided win-one-lose-the-other pattern already
+rejected twice in this log (entries covering Sigma17 and Sigma21).
+
+Verdict: REJECTED as replacements for Sigma23. Real, verified numbers, but
+a regime bet rather than a strict improvement. The extensive validation
+described in the Sigma36 report (16/16 rolling windows, 20,000-sample
+bootstrap, timing placebo, leave-one-block-out) is genuine methodology
+and rules out several failure modes, but does not resolve the actual
+question: whether giving up confirmed 251-500 strength for a bigger
+501-750 number is the right bet going forward. No candidate file built,
+no change to Sigma23.
+
+---
+
+### 40. ChatGPT parallel lineage batch, part 2 -- Sigma38 Purged Cross-Fit Lead-Lag, verified, aggregate looks clean but block check reveals the same regime bet
+Background: continuation of entry 39. Sigma38 adds a purged, cross-fitted
+lead-lag reliability sleeve on top of frozen Sigma34: learns singular
+directions on 25-pair training blocks at two lookbacks (375, 400) and
+fold counts (3, 4, 5), sizes each mode only on a temporally-purged
+held-out block, retains only positively-replicated modes, averages across
+fold counts, lookbacks, and two block-anchoring schemes (recent-relative
+and absolute-calendar), and adds a fixed 0.60 vote only when the
+cross-sectional forecast magnitude exceeds 1.20. Explicitly framed by its
+own report as one live test away from validation, and as not using the
+751-1000 panel in model selection.
+
+Method: same as entry 39 (hash check, direct score.py run on both
+windows). Grepped for the same unsafe-pattern list as the Sigma36 files
+(same exec()-based two-component combination technique) -- clean.
+
+Result: score reproduced exactly: 251-500=835.70, 501-750=1039.60. Against
+Sigma23 (831.6486/902.3404) this looks, at first glance, like the first
+candidate in the whole batch to clear the bar of a genuine dual-window
+improvement: +4.05 on 251-500, +137.26 on 501-750, no lopsided trade-off.
+
+Given how consequential that would be (a real replacement for Sigma23,
+not just a regime bet), ran an additional independent check beyond what
+either report supplied: a direct day-by-day PnL comparison against Sigma23
+on the same price data, split into 25-day blocks (10 per window), using a
+purpose-built script rather than trusting either report's own block
+figures (which were computed against Sigma34, not against Sigma23).
+
+  251-500: Sigma38 wins only 4/10 blocks head-to-head vs Sigma23. Block 1
+  alone is a -6876.7 loss and block 10 alone is a +7096.4 win; the near-
+  zero net aggregate edge (+4.05) is the product of large offsetting
+  swings, not a small stable improvement.
+  501-750: Sigma38 wins 8/10 blocks vs Sigma23, a genuinely more robust
+  margin, consistent with the underlying Sigma34 chassis's own known edge
+  on this window plus the cross-fit sleeve's addition on top.
+
+Verdict: REJECTED as a strict improvement, on the same grounds as entry
+39 despite the better-looking aggregate. The block check shows Sigma38's
+251-500 performance relative to Sigma23 is a coin flip (4/10) dressed up
+by aggregate cancellation, not a real edge -- the true shape of this
+candidate is the same lopsided Sigma34-family regime bet as Sigma34 and
+both Sigma36 variants (strong on 501-750, roughly neutral-to-noisy on
+251-500), just with a less severe 251-500 cost than its siblings. The
+report's own extensive validation (purged cross-fitting, leakage placebos,
+25-config parameter stability, concentration audit) is real methodology
+and is more credible structurally than Sigma36's, but it was run against
+Sigma34 as the baseline, not against Sigma23 -- and baseline choice
+matters exactly as much here as the mechanism itself. No candidate file
+built, no change to Sigma23.
+
+---
+
+### 41. ChatGPT parallel lineage batch, part 3 -- Sigma42 basket-reversion sleeve, cannot be verified, code not provided
+Background: continuation of entries 39-40. Sigma42 (basket-reversion
+sleeve added on top of frozen Sigma34: for each non-ALGO name, an 8-peer
+ridge-regularized level fit, trading 10% of the standard sleeve when
+|z_basket|>=2) is reported as the current self-reported live leader at
+945 on 751-1000, surpassing Sigma34's own reported 943.
+
+Method: attempted the same hash/score verification as entries 39-40.
+
+Result: the folder contains only Sigma42's report and a bare .sha256
+hash value -- the actual model file (Sigma42_Sigma34_Basket10Only.py) was
+not provided. No independent verification is possible: hash cannot be
+checked against any file, and the backtest claim (770.9734/972.4153, a
++1.0075/+10.7757 delta over the report's own internally-reconstructed
+Sigma34 baseline) cannot be re-run.
+
+Verdict: UNVERIFIABLE. This is the model carrying the batch's highest
+claimed live number (945) and it is the one candidate that cannot be
+checked at all. Flagged directly to the user: nothing about Sigma42 can
+be trusted or rejected on evidence, only noted as an open claim, until the
+actual code file is provided.
+
+---
+
+Net including entries 39-41: Sigma23 remains the best-by-backtest model
+and the only one in this session's history validated as a genuine,
+non-lopsided improvement on both windows. Every independently-verified
+ChatGPT-lineage file (Sigma34, Sigma36 Robust, Sigma36 1K, Sigma38) is
+real but represents the same underlying regime bet -- large 501-750 gains
+funded by flat-to-negative 251-500 performance relative to Sigma23 -- and
+Sigma42, the claimed live leader, cannot be verified at all without its
+code file. Given this project's established standard (entry 40's own
+postmortem lesson: historical robustness diagnostics, however extensive,
+have previously failed to transfer live), none of these files clear the
+bar for adoption over Sigma23 based on 1-750 backtest evidence alone. The
+751-1000 reveal, once it happens, is the only remaining way to resolve
+whether the regime bet these files all represent is one worth taking.
+
+---
+
+### 42. ChatGPT parallel lineage batch, part 4 -- Sigma43 extreme-residual-reversal sleeve, verified, and Sigma42 retroactively verified via ablation
+Background: the user supplied Sigma43_ExtremeResidualReversal.py and its
+report directly (outside the "chatgpt findings" folder used in entries
+39-41), self-reporting a new live score of 946 on 751-1000, one point
+above Sigma42's 945. Sigma43 is built on frozen Sigma42 (the file entry 41
+could not verify at all) plus one small addition: a 5%-of-sleeve vote that
+reverses cross-sectionally extreme (|z|>=2) one-day post-factor residual
+shocks on non-ALGO names.
+
+Method: the model file and report were supplied as chat attachments and
+were no longer present on disk by the time verification began (a
+transient-attachment issue, not something either party did); reconstructed
+the file byte-for-byte from the content already captured via the Read
+tool earlier in this conversation and re-saved it into the scoring
+scratchpad. Because of this, the SHA-256 could not be checked against the
+report's claimed hash (facbf2c7...) with full confidence in exact
+byte-identity (whitespace/line-ending differences from the reconstruction
+path cannot be fully ruled out) -- but the reconstructed file's syntax is
+valid and, critically, its score.py output matches the report's claimed
+exact-evaluator numbers to two decimal places on both windows, which is
+strong functional (if not cryptographic) confirmation the logic is
+faithfully reproduced. Grepped for the same unsafe-pattern list as prior
+entries -- clean (numpy only).
+
+Result: Sigma43 scored 251-500=781.83, 501-750=977.97, matching the report
+(781.832704/977.968065) almost exactly. Setting REV_ALPHA=0 (disabling
+only the new sleeve, leaving everything else including Sigma42's 10%
+basket unchanged) reproduces the report's claimed Sigma42 baseline exactly
+too: 251-500=770.97, 501-750=972.42 (report: 770.973408/972.415258). This
+is significant beyond Sigma43 itself: it is the first time Sigma42's own
+basket-reversion sleeve has been independently verified at all, since
+entry 41 found no Sigma42 code file existed anywhere in the shared
+folder. Sigma42 is functionally confirmed real, not just self-reported.
+
+Compared against Sigma23 (831.6486/902.3404), both are the same lopsided
+family already seen in entries 39-40:
+  Sigma42 (isolated):  -60.68 (251-500)  +70.08 (501-750)
+  Sigma43:              -49.82 (251-500)  +75.63 (501-750)
+Sigma43's own increment over Sigma42 (+10.86/+5.55) is real and reproduces
+exactly, and unlike the rest of the family it is a genuinely small,
+surgical change (report claims only 15 and 18 changed instrument-days
+across the two windows) -- narrower in scope than Sigma34/36/38's
+book-wide chassis changes, and its own report is unusually candid about
+name concentration and small-sample risk. Ran the same independent
+block-level check against Sigma23 used in entry 40 (not just against
+Sigma42, which is what the report itself used): Sigma43 wins only 5/10
+blocks on 251-500 (a coin flip, same shape as the whole family) and 7/10
+on 501-750.
+
+Verdict: Sigma42 is REJECTED as a replacement for Sigma23, now on
+verified rather than merely self-reported grounds -- same regime bet as
+Sigma34/36/38, confirmed by direct ablation rather than trust. Sigma43 is
+also REJECTED as a replacement for Sigma23 for the same reason, though its
+marginal addition over Sigma42 is itself clean, small, and well-isolated
+(no objection to the increment in isolation, only to the chassis it is
+built on). No candidate file built, no change to Sigma23.
+
+---
+
+Net including entry 42: Sigma23 remains the only file across the entire
+ChatGPT-parallel lineage (Sigma34 through Sigma43) validated as a genuine
+non-lopsided improvement. Every member of that lineage now independently
+checked (Sigma34, Sigma36 Robust, Sigma36 1K, Sigma38, Sigma42, Sigma43)
+carries the identical signature: real, reproducible numbers, large
+501-750 gains, and flat-to-negative 251-500 performance relative to
+Sigma23, confirmed at the block level to be either a net loss or a coin
+flip on that window rather than a stable edge. This is now a consistent,
+six-file pattern rather than an isolated case, which raises rather than
+lowers the bar for treating the claimed 945-946 live figures as evidence
+the regime bet pays off -- the 751-1000 reveal remains the only way to
+settle it.
+
+---
+
+### 43. The real 751-1000 data arrives -- decisive resolution, and a reversal of this log's own prior verdict
+Background: the user provided prices_full.txt, a genuine 1000-day price
+panel. Verified before anything else: rows 1-750 are byte-identical
+(np.allclose, max abs diff 0.0) to the prices.txt + prices_unseen_hidden.txt
+combination used for every 251-500/501-750 score in this log, confirming
+this is the same dataset with the real days 751-1000 now appended, not a
+different or resampled panel. Built score_full.py, a byte-for-byte copy of
+score.py's accounting logic extended to accept a 751-1000 window, and
+sanity-checked it first by reproducing Sigma23's known 251-500/501-750
+numbers exactly before trusting its 751-1000 output.
+
+Result -- every model in the project's history, scored for the first time
+against real (not self-reported, not development-window) data:
+
+  Model            751-1000 (verified)   previously self-reported live
+  Sigma18                798.97                798
+  Sigma19                805.77                806
+  Sigma20                793.61                794
+  Sigma22                795.88                796
+  Sigma23                833.07                ~833
+  Sigma34                943.39                943
+  Sigma36 Robust          913.88                (not previously live-tested)
+  Sigma36 1K              917.04                (not previously live-tested)
+  Sigma38                 924.39                (not previously live-tested)
+  Sigma42 (isolated)      944.90                945
+  Sigma43                 946.10                946
+
+Two findings, both load-bearing:
+
+First: every self-reported number the user has supplied all session,
+across eight different models, is now independently confirmed correct to
+within about one point. There is no reason remaining to distrust any
+previously self-reported live figure in this log.
+
+Second, and more consequential: this log's own repeated verdict across
+entries 39-42 -- that the entire Sigma34-descended ChatGPT lineage was an
+unproven, lopsided regime bet that should not be trusted over Sigma23 --
+is WRONG on the actual held-out data. Sigma34 beats Sigma23 by +110.32 on
+the real window (943.39 vs 833.07), and every descendant tested beats
+Sigma23 by +80 to +113. The exact pattern this log treated as a warning
+sign throughout entries 39-42 (worse 251-500, much better 501-750,
+confirmed at the block level to be a near-coinflip or net loss on
+251-500 relative to Sigma23) turned out to be the correct structural
+signature, not an overfit artifact -- the Sigma34 chassis's asymmetric
+spectral shrinkage genuinely generalizes better than Sigma23's
+causally-gated version, and the 251-500 cost was real but simply outweighed
+by the 501-750-and-now-751-1000 gain, not evidence of fragility.
+
+A more precise second-order finding sits inside this reversal, and it
+validates part of the original skepticism rather than fully overturning
+it: the plain Sigma34 chassis is not what needed the most caution.
+Sigma36 Robust and Sigma36 1K (which added the AG-overrule contradiction
+arbiter on top of frozen Sigma34, and which showed the largest in-sample
+501-750 gains of the whole batch: +81.51 and +100.71 over Sigma23) both
+score WORSE than plain Sigma34 on the real window (913.88 and 917.04 vs
+943.39) -- a small further re-tuning step that looked like an improvement
+in-sample actively hurt out of sample. Sigma38 (purged cross-fit lead-lag,
+the most methodologically elaborate candidate in the batch, extensively
+self-validated and explicitly flagged by its own report as "one live test
+away") also underperforms plain Sigma34 (924.39 vs 943.39) despite its
+sophistication. By contrast, Sigma42's basket-reversion sleeve and
+Sigma43's extreme-residual-reversal sleeve -- both small, narrowly-scoped,
+low-parameter additions -- each added a small further real gain on top of
+Sigma34 (943.39 -> 944.90 -> 946.10), monotonically, matching their own
+claimed live record exactly. The generalizable pattern across this whole
+batch is not "trust the chassis, distrust the additions" or vice versa --
+it is that narrow, mechanically simple additions with small claimed
+footprints (Sigma42, Sigma43) generalized, while additions justified by
+extensive but purely historical robustness diagnostics on top of an
+already-good base (Sigma36's 16/16 rolling windows and bootstrap; Sigma38's
+purged cross-fitting and leakage placebos) did not -- reinforcing, not
+contradicting, entry 40's original postmortem lesson, just applied one
+level deeper in the lineage than this log initially aimed it.
+
+Verdict: Sigma23 is DEMOTED. Sigma43 is PROMOTED as the new best-verified
+model, at 946.10 on the real 751-1000 window, ahead of Sigma42 (944.90),
+Sigma34 (943.39), and Sigma23 (833.07). This required overturning this
+log's own entries 39-42 rather than defending them -- the block-level and
+lopsided-tradeoff heuristics used throughout this log are reasonable
+priors for generalization risk when no real held-out data exists, but they
+are heuristics, not ground truth, and this entry is the ground truth. Model
+List should be updated to carry Sigma43 (or a from-scratch reconstruction
+of the same logic, since the working copy was recovered from a transient
+chat attachment rather than the user's own saved file) as the new
+reference baseline going forward.
+
+---
+
+Net including entry 43: the project baseline changes for the first time
+since Sigma23's promotion. Sigma43 (Sigma34's asymmetric spectral
+shrinkage plus Sigma25DG death-guard arbitration plus a 10% multivariate
+basket-reversion sleeve plus a 5% extreme-residual-reversal sleeve) is now
+the best-verified model at 946.10 on genuine 751-1000 data. Sigma23
+remains a well-validated, honestly-built model but is no longer the
+project's best candidate. All prior self-reported live numbers in this
+log (Sigma18/19/20/22/23/34/42/43) are now independently confirmed
+accurate.
+
+---
+
+### 44. Is the Sigma34-lineage gain causal, or regime luck confined to 501-750? Isolated the mechanism and checked against real 751-1000 data
+Background: the user's own working notes, written before the real data was
+released, posed the central open question directly: the asymmetric
+spectral-shrinkage lineage lags on 251-500 by roughly 200 points relative
+to 501-750, and it was unclear whether this reflects (a) a one-time
+regime change chatgpt's tuning happened to capture, (b) genuine but
+under-expressed alpha, or (c) noise/luck that should not be trusted. With
+real 751-1000 data now in hand (entry 43), this is directly testable
+rather than a matter of judgment.
+
+Method: extracted the mechanism in isolation, stripped of every later
+addition. "Sigma32_core" = Sigma34's own "Sigma25_AsymmetricSpectral"
+component (asymmetric LL shrinkage, scale=1.6/power=0.70 on the expanding
+matrix vs scale=3.0/power=0.95 on the fixed 450-day recent matrix, plus
+sparse residual restoration and the AG-vector) with the death-guard
+overlay, basket sleeve, and AG-overrule arbiter all removed -- extracted
+directly from Sigma34's own source (lines defining `_core_getMyPosition`),
+aliased to a bare `getMyPosition`. Scored this Core against Sigma19 (no
+shrinkage at all, the pre-Sigma24 ancestor) on all three now-available
+250-day windows, then ran the same 25-day block-win-count and a new
+per-instrument incremental-PnL concentration check (which of the 50
+non-ALGO names account for the Core-vs-Sigma19 PnL difference) on each
+window.
+
+Result:
+
+  Window                Sigma19   Core     Delta     Blocks (Core wins)  Top-5 name share
+  251-500                831.58   755.77   -75.81     4/10                31.2%
+  501-750 (in-sample)    836.73   951.83  +115.10     8/10                28.7%
+  751-1000 (real, blind) 805.77   933.11  +127.34     9/10                29.1%
+
+Three findings together rule out both "luck confined to 501-750" and
+"noise concentrated in a few names":
+  1. The gain does not shrink on the untouched window -- it is if anything
+     slightly larger (+127.34 vs +115.10). A lucky fit to 501-750 would be
+     expected to revert toward zero on fresh data; it did not.
+  2. Block win-rate is consistently strong on both post-day-500 windows
+     (8/10, then 9/10) rather than being carried by one or two lucky
+     blocks.
+  3. Name concentration is nearly identical across all three windows
+     (29-31% top-5 share) -- the mechanism is not riding a handful of
+     outlier trades any more on the new window than on the old ones.
+
+A pointed secondary finding: Sigma23's own causally-gated version of this
+same shrinkage (the CV+structural gate this log promoted in entry 36,
+specifically designed to avoid over-trusting an ungated shrink) captured
+only +27.30 of this same real-window advantage over Sigma19 (833.07 vs
+805.77), versus the ungated Core's +127.34. The gate this log built to be
+the SAFE choice was, on the actual holdout, too conservative by roughly
+100 points -- it filtered out genuine signal, not noise, in exactly the
+window it was meant to protect.
+
+Verdict: the Sigma34-lineage gain is CAUSAL and PERSISTENT, not regime
+luck or noise. Something in the data's structure does appear to shift
+around day 500 in a way that specifically disfavours this shrinkage
+(251-500's -75.81 is real and consistent, not scattered), but whatever
+shifted has now held for two independent, non-overlapping 250-day windows,
+one of which was impossible to have tuned against. The three-way decision
+posed in the user's notes (accept the regime change and tailor around it
+/ reject anything not robust on 251-500 / treat it as insufficiently-
+expressed genuine alpha) resolves in favour of the first and third
+together, against the second: rejecting any candidate not robust on
+251-500 would have cost the entire Sigma34/42/43 lineage's +110 to +113
+point verified real-data improvement over Sigma23 (entry 43). The one part
+of the original skepticism that DOES survive intact: further tuning
+stacked on top of this genuine mechanism (Sigma36's AG-overrule, Sigma38's
+purged cross-fit sleeve) did NOT survive to 751-1000 despite outperforming
+plain Sigma34 in-sample on 501-750 (entry 43) -- so the operative rule
+going forward is trust the base mechanism, keep the same skepticism for
+elaborations justified mainly by additional historical robustness
+diagnostics rather than a small, low-footprint, independently-isolable
+addition (the pattern Sigma42/43 both fit and Sigma36/38 do not).
+
+---
+
+Net including entry 44: the project's own block-level and lopsided-
+tradeoff heuristics (used to reject the Sigma34 lineage throughout entries
+39-42) are now understood to have a specific, identifiable failure mode --
+they cannot distinguish "fragile fit to one window" from "genuine effect
+that happens to be regime-dependent" without a second independent window,
+which is precisely the tool that was missing until entry 43. With that
+tool now available, the Sigma34 lineage's core mechanism is confirmed
+genuine, and Sigma23's own protective gate is confirmed to have been
+overly conservative on the exact data it was designed to protect.
+
+---
+
+### 45. Clearing the pending-item queue: every entry explicitly earmarked "once 751-1000 lands" now checked
+Background: swept the whole log for items marked pending/earmarked for the
+real data (entries 10, 21, 23, 27, 31, 32/35). All are now directly
+testable. Resolved each in turn.
+
+**Entry 10 (SigmaB10 vs SigmaB10_ALGOagree)**: real data breaks the coin
+flip only slightly -- ALGOagree 678.45 vs SigmaB10 671.28 (+7.17). Small,
+not decisive, and both are far below the current lineage (Sigma19=805.77,
+Sigma43=946.10) so this is now low-stakes regardless of which wins.
+Resolved: marginal edge to ALGOagree, immaterial to the current baseline.
+
+**Entry 21 (ALGO reversal horizon=5, flagged as a lone spike not a
+plateau inside the full book)**: swept horizon on Sigma19 directly against
+real 751-1000 (single-constant change, cheap to test exactly):
+  h=2: 706.67   h=3: 855.14   h=4: 771.64   h=5: 805.77 (current)
+  h=6: 761.95   h=8: 699.72   h=10: 625.46
+h=5 is confirmed to be exactly the lone-spike-among-immediate-neighbours
+shape entry 21 flagged (h=4 and h=6 both worse, matching the in-sample
+finding) -- but h=3, which scored WORST of the nearby values on both
+in-sample windows (769.46/769.94, entry 21 stage 3), is actually the best
+on real data (855.14, +49.37 over current). Block-check of h=3 vs h=5:
+5/10 blocks, and one single block (block 9, +13,242) exceeds the entire
+net gain (+12,006) -- outside that one block h=3 is roughly a wash or
+mild loss against h=5. Verdict: genuinely inconclusive, not a case for
+switching -- this is the same large-single-block-driven signature that
+correctly sank entry 27's AR-gated rule, not the broad multi-block edge
+that confirmed entry 44's asymmetric-shrink finding. More importantly,
+this is a second, independent demonstration that dev-window parameter
+selection can point in the WRONG direction (h=3 looked worst in-sample,
+does best on real data) -- reinforcing entry 21's original concern about
+h=5 without providing clean grounds to replace it with anything specific,
+since doing so on this one real window alone would repeat the same
+single-window overfitting risk in the other direction.
+
+**Entry 23 (ALGO relative-reversal vs plain self-reversal, explicitly
+flagged as "the cleanest candidate in the whole log for the 751-1000
+tie-break")**: reimplemented the bw=60/h=3 relative-reversal exactly per
+the entry's own description (beta-residualize ALGO's daily return against
+the 49-name equal-weight basket return over a trailing 60-day window,
+fade the 3-day cumulative residual), grafted onto Sigma19 replacing plain
+self-reversal. Sanity check reproduced entry 23's own reported 756.62/
+892.36 to the exact decimal on both dev windows, confirming a faithful
+reimplementation. Real 751-1000: relative-reversal scores 844.26 vs
+Sigma19's plain self-reversal 805.77 -- a genuine +38.49 improvement,
+block-checked at 6/10 (moderate, not a single-block artifact: largest
+single block swing +9,012/-6,784, no block exceeding the net total).
+Verdict: the tie-break resolves in favour of relative-reversal. This is a
+real, validated improvement to the ALGO sleeve, independent of and
+additive to the Sigma34-lineage findings (entries 43-44) -- worth testing
+grafted into Sigma43 itself, since Sigma43 still carries the same
+unmodified plain 5-day self-reversal inherited unchanged from Sigma19
+through the entire lineage.
+
+**Entry 27 (AR-gated reversal)**: not re-tested numerically -- the entry's
+own verdict already superseded the "earmarked for 751-1000" framing with
+a specific mechanistic diagnosis (60-day trailing autocorrelation is too
+slow an instrument, traced day-by-day to a concrete failure) rather than
+a "wait for more data" placeholder. Nothing about the real data changes
+that diagnosis; not re-opened.
+
+**Entry 31 item 3 (do Sigma20's birth guard and Sigma22's gray-window
+tweak hold up?)**: already directly answered by entry 43's verification
+table -- Sigma20=793.61 and Sigma22=795.88 on real 751-1000, both BELOW
+Sigma19's 805.77, exactly reproducing the provisional live numbers entry
+31 recorded (794, 796) and confirming neither addition holds up despite
+clean two-window backtest validation at the time.
+
+**Entries 32/35 (Sigma24_SpectralLL, plain SYMMETRIC spectral shrinkage,
+rejected twice -- a 16-config sweep with zero exceptions, then a within-
+window predictive-power test)**: reconstructed the mechanism directly
+(scale=2.5/power=0.75 applied identically to both the full and recent LL
+matrices, the as-coded settings from entry 32) since no saved file
+existed. Reproduction is close but not exact on the dev windows (777.03/
+882.95 vs entry 32's reported 783.02/883.48, a small residual
+implementation difference), so treat what follows as informative rather
+than certainty-grade. Real 751-1000: 909.42 -- closely matching entry 35's
+own note that "the user's separately-reported live score (~912-926)
+remains unexplained" and confirming it as genuine, not an anomaly: +103.65
+over Sigma19 (805.77). This means BOTH the plain symmetric shrinkage
+this log rejected in entry 32 (16-config sweep, zero exceptions) AND the
+asymmetric version confirmed in entry 44 are real, generalizing alpha --
+the earlier rejection was not a methodology failure (the sweep and the
+within-window predictive-power test were both executed correctly and
+honestly) but the same specific blind spot as entries 39-42: a lopsided
+two-window shape was treated as sufficient grounds for rejection when it
+is not sufficient to distinguish "fragile" from "regime-dependent but
+real" without a third window.
+
+---
+
+Net including entry 45: the pending-item queue this log built up over its
+first 44 entries is now fully cleared. Two concrete, actionable findings
+came out of it: (1) ALGO relative-reversal (bw=60, h=3) is a real,
+moderately block-consistent +38.49 improvement over Sigma19's plain
+self-reversal on real data, worth testing inside Sigma43's current
+chassis; (2) the ALGO reversal horizon itself (currently 5) remains
+flagged as not robustly calibrated, but the real data does not cleanly
+support replacing it with any specific alternative either -- h=3's
+apparent edge is single-block-driven, not broad. Sigma20's and Sigma22's
+now-confirmed real-data underperformance, and Sigma24_SpectralLL's now-
+confirmed real-data outperformance, both close out items entries 31/32/35
+left open, and both reinforce entry 44's central lesson: this log's
+lopsided-two-window heuristic has a genuine, now well-documented blind
+spot, and every item that heuristic touched without a third window to
+confirm it deserves the same second look this entry just gave it.
+
+---
+
+### 46. Relative ALGO reversal, earmarked since entry 23, resolved against real 751-1000 data -- VALIDATED, promoted as Sigma44
+Background: this session (picking up from a different working context than
+entries 28-44, but sharing the same project files) had independently
+found and left two candidate replacements for Sigma19's plain 5-day
+self-referential ALGO reversal deliberately unpromoted, both explicitly
+earmarked for resolution once real 751-1000 data arrived: relative
+reversal (beta-residualize ALGO against the equal-weight basket of the
+other 49, fade the residual's cumulative move -- found robust across its
+own parameter grid but genuinely two-sided with only two overlapping
+in-sample windows to judge from) and AR(1)-gated reversal (scale exposure
+by trailing-60-day ALGO autocorrelation -- theory and regime-shift claims
+confirmed accurate, but block-level analysis found the specific 60-day
+estimator too slow to reliably time the underlying mechanism, so not
+promoted). Both were designed against Sigma19; with Sigma43 now the
+verified best model (946.10 real, entry 43) and confirmed to still carry
+the exact same unmodified plain-reversal ALGO sleeve, both candidates were
+re-tested against Sigma43's actual chassis instead, using the newly
+received real prices_full.txt (independently verified: rows 1-750
+byte-identical to the existing prices.txt+prices_unseen_hidden.txt
+combination, max abs diff 0.0, confirming genuine appended data not a
+resampled panel).
+
+Built score_full.py (byte-for-byte copy of the existing score.py
+accounting logic, extended to accept a 751-1000 window) and sanity-checked
+it by reproducing Sigma19's known 251-500/501-750 scores exactly before
+trusting its output. Independently re-verified Sigma43's own claimed
+946.10 on the real window first: exact match. Then grafted both ALGO
+candidates onto Sigma43 (everything else unchanged) and scored all three
+variants on all three windows:
+
+                        251-500    501-750    751-1000 (real)
+  Sigma43 (self, base):   781.83    977.97      946.10
+  + relative reversal:    706.45   1033.70      983.42   (+37.32 real)
+  + AR-gated reversal:    793.75    995.82      943.07   (-3.03 real, flat)
+
+Relative reversal improves the score on the genuinely fresh, previously-
+unseen 751-1000 window by +37.32, following the exact lopsided-but-real
+signature already validated for this lineage's own spectral-shrinkage
+mechanism in entries 43-44 (worse 251-500, better on BOTH post-day-500
+windows, not reverting on new data -- the opposite of what a lucky fit to
+one window would produce). Block-level check on 751-1000: 6/10 blocks
+positive, no single block dominating (largest single-block swings +360.5
+and -271.4, broadly comparable in magnitude, not one outlier driving the
+aggregate). AR-gated reversal, by contrast, is flat on the real window
+(-3.03) -- directly confirming the block-level skepticism already applied
+to it (its own earlier verdict: real theory, mechanism too slow to time)
+rather than overturning it.
+
+Verdict: relative reversal VALIDATED against real held-out data and
+PROMOTED. Built Sigma44_RelativeAlgoReversal.py = Sigma43 with only the
+ALGO sleeve swapped (beta_window=60, horizon=3, matching the originally
+recommended configuration). AR-gated reversal remains NOT promoted --
+real data confirms rather than overturns the earlier caution. Sigma44 is
+now the best-verified model in the lineage: 706 (251-500), 1034 (501-750),
+983 (751-1000, real).
+
+---
+
+Net including entry 46: the project baseline moves again, this time within
+the same session that received the real data rather than requiring a
+third window to arrive first -- relative reversal was correctly held back
+in this session's own earlier work (entries 23-ish, prior context) for
+exactly the reason that turned out to matter (only two windows available,
+genuinely two-sided result), and real data has now settled it cleanly in
+its favour. Sigma44 (Sigma43 + relative ALGO reversal) is the new
+best-verified model at 983.42 on real 751-1000 data (independently
+reconfirmed to the exact decimal in entry 45's own author's follow-up
+pass -- see the verification note appended there), ahead of Sigma43's
+946.10. AR-gated reversal remains correctly rejected. Sigma43 and Sigma44
+are both now durably saved to Model List (Sigma43 previously existed only
+as a transient chat attachment).
+
+---
+
+### Verification note appended to entry 46 (from the entry-45 author's session)
+Independently re-verified this entry's central claim before accepting it,
+per this project's standing rule of never trusting a score -- including
+one found in this project's own log by a differently-scoped concurrent
+session -- without direct re-derivation. Confirmed Sigma43_ExtremeResidualReversal.py
+in Model List hashes to facbf2c7913c2c0c3af9d3ec55f42aa69e231774e36b8e1f0cadd68f6baa8ea9,
+exactly matching its own report's claimed hash. Scored both Sigma43 and
+Sigma44_RelativeAlgoReversal.py directly via this session's own
+score_full.py (an independently-built but logically identical harness to
+the one this entry describes): Sigma43 reproduces 781.83/977.97 exactly;
+Sigma44 reproduces 706.45/1033.70/983.42 exactly on all three windows,
+including the real 751-1000 figure. Fully independently confirmed, not
+merely accepted on report. Sigma44 stands as the verified best model.
+
+---
+
+### 47. Sigma44's relative-reversal parameters (REL_BW=60, REL_H=3) had never been through a neighbourhood-plateau check -- closing that gap, and adding a 501-1000 combined-window score to match the final test's time horizon
+Background: entry 46 promoted Sigma44 on a single, untuned parameter point
+with no robustness check -- a methodological gap relative to every other
+promoted component in this log (the ag-vector's 19-config sweep, the
+asymmetric spectral shrink's 3x3 grid, etc.). Explicitly a robustness/
+plateau check, not a re-optimization: the rule set in advance was that a
+different (bw,h) point scoring higher on 751-1000 alone would NOT be
+grounds for promotion, since 751-1000 is the only real held-out window and
+picking a parameter to fit it would repeat the exact single-window
+overfitting mistake already documented twice in this log (Sigma21/entry
+29, the Sigma36/38 postmortem in entry 43).
+
+Method: swept REL_BW in {40,50,60,75,90} x REL_H in {2,3,4,5}, 20
+configurations, grafted onto Sigma43 (identical to how Sigma44 itself was
+built), scored on all three standard windows plus a new 501-1000 combined
+window (500 scored days, numTestDays=500 instead of 250 -- added per
+request, to match the final competition test's time horizon; same
+accounting logic, sanity-checked before trusting it).
+
+Full grid (score column, all four windows):
+  bw\h    2         3          4         5        [251-500 / 501-750 / 751-1000 / 501-1000]
+  40    619.68/938.23/919.30/876.95   746.65/1033.60/980.45/955.24   709.63/1057.48/910.67/932.25   641.19/1103.08/884.73/942.16
+  50    645.34/965.29/948.46/905.06   744.62/1033.70/987.38/958.76   714.72/1089.89/928.06/957.19   619.38/1087.50/839.65/911.85
+  60    664.56/961.74/948.45/903.28   706.45/1033.70/983.42/956.79*  705.36/1058.16/917.98/936.29   609.78/1067.12/866.80/915.23
+  75    655.36/954.38/945.76/898.24   698.56/1033.70/965.44/947.79   691.93/1058.16/917.52/936.06   656.03/1103.70/864.37/932.43
+  90    626.51/947.90/945.76/895.00   701.43/1033.70/977.07/953.61   686.75/1072.04/928.06/948.25   633.19/1093.37/874.63/932.35
+  (* = promoted Sigma44 point, each cell is 251-500/501-750/751-1000/501-1000)
+
+Result: h=3 dominates uniformly across EVERY beta_window tested, on ALL
+four windows, with zero exceptions -- at every single bw in {40,50,60,
+75,90}, h=3 beats h=2 and h=4 (its immediate neighbours) by a wide,
+consistent margin on every window. Within h=3, beta_window forms a tight,
+stable band with no discontinuities: 751-1000 ranges 965.44-987.38 (a
+22-point spread across five bw values, no sign flips), 501-1000 ranges
+947.79-958.76 (11-point spread). The promoted point (60,3) is close to
+but not exactly the single best cell in the grid (bw=50 edges it out
+slightly on both real-data columns: 987.38 vs 983.42 on 751-1000, 958.76
+vs 956.79 on 501-1000) -- a small, expected amount of noise inside a
+genuine plateau, not a reason to reselect.
+
+Block-level check (751-1000, vs Sigma43 baseline) on (60,3) and its four
+immediate grid neighbours:
+  (60,3) promoted:  6/10 blocks    (50,3) bw-down:  6/10 (identical)
+  (75,3) bw-up:     6/10 (identical)
+  (60,2) h-down:    5/10 (mild, consistent degradation)
+  (60,4) h-up:      5/10 (mild, consistent degradation)
+Moving along beta_window at fixed h=3 gives IDENTICAL block-level win
+rates; moving away from h=3 gives a small, smooth drop, not a collapse --
+exactly the shape a genuine plateau produces, and the opposite of what a
+lone spike would look like (a lone spike collapses sharply at its
+immediate neighbours, as entry 27's AR-gated rule and entry 21's
+horizon=5 both did when checked this same way).
+
+Verdict: outcome (a) from the two specified in advance -- (60,3) sits in
+a genuine plateau where nearby points also improve on all three original
+windows without sign flips, and the block-level check confirms this is
+not an aggregate-score illusion. Sigma44 is now FULLY VALIDATED by this
+project's own neighbourhood-robustness standard, closing the gap entry 47
+was opened to close. No change to Sigma44's parameters -- per the
+pre-committed rule, no reselection was made even though (50,3) scores
+marginally higher on the real window, since doing so would be exactly the
+single-window cherry-picking this check was designed to guard against.
+
+Separate test (blend vs full replacement, per entry 26's finding that
+self-reversal and relative-reversal hunt genuinely different forces):
+built a 50/50 dollar-weighted blend and an agree-only gate (mathematically
+near-identical to each other, since both underlying signals are
+restricted to {-1,0,1}) between Sigma43's original self-reversal and
+Sigma44's relative-reversal. Both blends score BETWEEN the two pure
+signals on every window, as expected from averaging/gating two partially-
+offsetting signals -- neither beats pure relative-reversal on the real
+751-1000 window (blend 966.54, agree-only 967.59, vs pure relative's
+983.42). Blending does not help; it is a straight tradeoff (reduces the
+251-500 cost by borrowing self-reversal's strength there, at the cost of
+giving up real-window performance), not an improvement. Confirms Sigma44's
+full replacement of self-reversal was the correct choice over any blend.
+
+---
+
+Net including entry 47: Sigma44 (Sigma43 + relative ALGO reversal,
+REL_BW=60/REL_H=3) is now fully validated by this project's own
+neighbourhood-plateau standard, the same bar every other promoted
+component has cleared -- closing the one methodological gap in its
+promotion. No parameter change was made despite a marginally higher-
+scoring neighbour on the real window, honouring the pre-committed rule
+against single-window reselection. Blending self- and relative-reversal
+was tested and confirmed inferior to full replacement. Sigma44 remains the
+best-verified model in the lineage: 706 (251-500), 1034 (501-750), 983
+(751-1000, real), 957 (501-1000, matching the final test's time horizon).
+merely accepted on report. Sigma44 stands as the verified best model.
+
+---
+
+### 47. Sigma52_FinalHorizonTransfer -- a hard day-750 mechanism switch caught and rejected, two small genuine pieces salvaged, promoted as Sigma53
+Background: the user supplied Sigma52_FinalHorizonTransfer.py directly,
+flagging it themselves as "at risk of being overfitted, but there seems to
+be some genuine alpha" and asking for it to be filtered and consolidated.
+Its own docstring reads: "Sigma51 with a cross-fitted LL committee before
+history length 750 and a 30/40% accumulated-source LL committee afterward.
+Only the primary forecast state is reset at the disclosed midpoint." The
+phrase "disclosed midpoint" is a direct admission that the model's
+mechanism is conditioned on absolute history length crossing 750 -- the
+exact day the previously-hidden 751-1000 panel begins. This is the single
+most severe overfitting shape possible: not a parameter tuned using the
+real window, but the CHOICE OF MECHANISM itself gated on knowing where the
+answer key starts. Flagged immediately, before any scoring, as the primary
+risk to investigate.
+
+Method: verified the file is safe (no exec/eval/file I/O beyond numpy),
+confirmed it runs and reproduces sensible numbers, then isolated every new
+piece against real 751-1000 data one at a time, always by ablating back
+toward Sigma44 (the current best-verified model) rather than trusting the
+bundle's own aggregate numbers.
+
+Headline (bundle as received): 856.09 (251-500), 1155.94 (501-750),
+1038.61 (751-1000, real) -- beats Sigma44 (706.45/1033.70/983.42) on every
+window with no lopsided trade-off, which is exactly why the day-750 switch
+needed to be tested rather than taken at face value.
+
+Day-750 switch, isolated: forced the pre-750 formula (median vote across a
+3-alpha cross-fit committee, no aggregate LL blend) permanently on, and
+separately forced the post-750 formula (30/70 then 40/60 blend of a
+10-day-aggregated LL matrix with the base one, second-vote-averaged)
+permanently on, then scored BOTH on all three windows:
+                          251-500    501-750    751-1000 (real)
+  pre-750 formula, always:  856.09    1155.94      975.21
+  post-750 formula, always: 790.35     956.16     1038.61
+The post-750 formula is worse than the pre-750 formula on BOTH development
+windows (-65.74, -199.78) and only better on the one window it was
+switched on for (+63.40). This is the textbook signature of a mechanism
+selected using knowledge of the disclosed window, not a genuine adaptive
+detector -- a real regime-sensitive rule would key off a measurable market
+signal, not a hardcoded absolute-day threshold equal to the reveal
+boundary. Also notable: forcing the pre-750 formula onto 751-1000 (975.21)
+scores slightly WORSE than Sigma44 itself (983.42) -- the bundle's
+headline 1038.61 on the real window is being manufactured almost entirely
+by letting the post-750-only formula apply there and nowhere else, not a
+result that survives without the switch. VERDICT: the day-750 switch and its associated
+aggregate-LL blend are REJECTED outright, unconditionally, regardless of
+any further findings below.
+
+Remaining four pieces, ablated one at a time against the "pre-750 formula,
+always on" baseline (856.09/1155.94/975.21):
+  - Cross-fit LL reliability committee (CF_ALPHAS=(0.60,0.75,0.90), same
+    purged/cross-fitted family as Sigma38): removing it changes the score
+    to 797.33/1076.12/1010.60 -- i.e. the committee itself was contributing
+    +58.76/+79.82 on the two development windows but -35.39 on the real
+    window. Confirmed harmful on genuinely new data, a second independent
+    confirmation of entry 44's finding that this exact mechanism family
+    (purged cross-fitting of the LL matrix) does not generalize despite
+    substantial in-sample validation. REJECTED.
+  - Adaptive ALGO selector (3-window trailing-edge vote choosing between
+    plain and relative ALGO reversal): removing it (always use relative
+    reversal, matching Sigma44 exactly) changes the score to
+    781.11/1143.98/975.21. The selector was contributing +74.98 (251-500),
+    +11.96 (501-750), and exactly +0.00 (751-1000) -- it never once
+    selected differently from plain relative-reversal on the real window.
+    Its entire benefit is unvalidated by any real data and concentrated on
+    251-500, this project's chronically weakest and most-iterated-against
+    window. REJECTED.
+  - Basket weight (BASKET_ALPHA 0.10->0.40, BASKET_GATE 2.00->1.875):
+    removing it changes the score to 840.42/-/977.24 -- contributing
+    +15.67 (251-500) and +2.03 (751-1000, real), small but non-negative on
+    genuinely new data. KEPT.
+  - Asymmetric extreme-residual-reversal (flat REV_ALPHA=0.05 split into
+    REV_POS_ALPHA=0.45 / REV_NEG_ALPHA=0.15): removing it (revert to flat
+    0.05) changes the score to 853.00/-/960.09 -- contributing +3.09
+    (251-500) and +15.12 (751-1000, real), again small but non-negative on
+    genuinely new data. KEPT.
+
+Consolidated candidate (Sigma44 + basket weight 0.4 + asymmetric reversal,
+nothing else): built fresh directly on Sigma44's own verified chassis
+(not by patching Sigma52) as a cross-check; reproduced to within ~1 point
+of the same result obtained by ablating Sigma52 down to the same pieces,
+confirming the two constructions agree. Final verified scores: 251-500=
+720.54 (+14.09 vs Sigma44), 501-750=1063.53 (+29.83), 751-1000 (real)=
+1010.23 (+26.81), 501-1000=977.24 (+20.45). Non-lopsided -- improves all
+three windows. Block-level vs Sigma44 on 751-1000: 7/10 blocks, no single
+block dominating, top-5 |name-share| of incremental PnL 31.5% (broad, not
+concentrated -- comparable to Sigma44's own validation in entry 46).
+
+Verdict: three of five bundled changes in Sigma52 were genuine overfitting
+risk materialized -- the day-750 switch (rejected outright on mechanism
+grounds alone, confirmed by ablation), the cross-fit committee (confirmed
+harmful on real data, second instance of the same family failing), and the
+adaptive ALGO selector (zero real-data validation, concentrated entirely on
+the one chronically-weak window). Two were genuine, modest, real
+improvements confirmed on data that could not have been used to select
+them (basket weight, asymmetric reversal). PROMOTED the consolidated
+version as Sigma53_Consolidated.py (Model List), built directly on
+Sigma44's verified chassis with only these two changes.
+
+---
+
+Net including entry 47: Sigma53 is the new best-verified model at 1010.23
+on real 751-1000 data (977.24 on the 501-1000 combined metric), ahead of
+Sigma44's 983.42 (956.79). This episode is a clean illustration of why
+ablating every bundled change individually against real data remains
+necessary even when a candidate's own aggregate numbers look uniformly
+positive with no lopsided trade-off -- the day-750 switch's aggregate
+result looked like the cleanest, most reassuring shape of anything tested
+this session (winning every window, no trade-off at all), and it was the
+most overfit piece in the entire file. A clean aggregate is not evidence
+against a mechanism-selection exploit; only ablation against the
+mechanism's own internal structure caught it.
+
+---
+
+### 48. Sigma54_Sigma52StructuralRegime -- a genuinely causal regime detector for the ALGO sleeve, extracted and consolidated with Sigma53
+Background: continuation of entry 47. The user supplied three further
+items: Sigma54_Sigma52StructuralRegime.py (Sigma52 -- day-750 switch,
+cross-fit committee, and all -- with a new structural ALGO regime detector
+layered on top), Sigma51_AdaptiveRelativeAlgo.py (Sigma52's non-ALGO logic
+with NEITHER the day-750 switch NOR the cross-fit committee, retaining
+only the "adaptive" trailing-edge-vote ALGO selector already flagged in
+entry 47 as unvalidated), and a research report proposing the new
+mechanism: a trailing-250-day R^2 of ALGO's return against the equal-
+weight non-ALGO basket, with R^2>=0.98 favouring plain 5-day self-reversal
+(ALGO behaving as a near-pure market proxy) and R^2<=0.97 favouring
+relative/residual reversal (material idiosyncratic variance present),
+independently backed by the report's own structural-break analysis (R^2
+0.9858 -> 0.9306 around day 451, p<0.00034 via block-permutation null).
+Asked directly: is Sigma53 (the report's own naming, not this log's
+Sigma53_Consolidated -- a genuine naming collision) likely to be the
+highest scorer, and can the regime mechanism be consolidated with
+Sigma52's core ideas causally rather than as an overfitted bundle.
+
+Method: verified all three supplied items are safe (no exec/eval/file I/O
+beyond numpy). Independently reproduced Sigma51's own claimed numbers
+exactly (797.334/1076.122/1010.605/984.376 across 251-500/501-750/751-1000
+real/501-1000) -- and confirmed these are IDENTICAL to this log's own
+entry-47 "noCrossfit" ablation of Sigma52, an unplanned but clean cross-
+validation between two independently-derived paths. Reconstructed the
+report's own "Sigma53" (Sigma51 + the R^2 gate, nothing else changed, per
+the report's explicit statement) by patching Sigma51's ALGO-selector
+function with the R^2-gated version extracted from Sigma54's source, and
+reproduced the report's claimed numbers exactly on all four metrics
+(797.334/1129.364/1010.605/1011.085).
+
+Critical finding: the R^2 gate has EXACTLY ZERO effect on the real
+751-1000 window in every construction tested. Sigma51 alone, the
+reconstructed report "Sigma53," and Sigma54 as supplied (still scores
+1038.61 there, byte-identical to Sigma52's own score) all match their
+no-gate counterparts exactly on this window. Per the report's own day-1000
+diagnostics (trailing R^2=0.9145), the gate stays in "relative reversal"
+mode throughout the one real window available, so it cannot be validated
+or refuted by it either way -- unlike Sigma52's day-750 switch, this is
+not manufacturing an illegitimate real-data edge, but it also means the
+report's entire claimed gain over Sigma51 (+53.24 on 501-750, 0 elsewhere)
+sits entirely inside the same 251-750 span the regime break itself was
+discovered in, and Sigma54 as supplied demonstrates its real-data score is
+still 100% attributable to the already-rejected day-750/cross-fit
+machinery, not this new mechanism.
+
+Despite that, the R^2 gate itself is qualitatively different from the
+day-750 switch in the one way that matters: it is a genuinely causal,
+continuously-recomputable statistic, not an absolute-calendar trap. A day-
+750 switch can never revert; an R^2 gate can swing back the moment ALGO's
+behaviour changes, in either direction, using only information available
+at the time. Consolidated it directly onto entry 47's Sigma53_Consolidated
+(not onto Sigma51/Sigma52), since Sigma53 already excludes the day-750
+switch and cross-fit committee for independently-verified reasons, using
+relative_sign (not Sigma51's unvalidated trailing-edge vote) as the
+ambiguous-band (0.97-0.98) fallback. A like-for-like check confirmed this
+simplification is immaterial on the real window (1010.23 vs the report's
+reconstructed 1010.605, a 0.37-point difference) while removing an entire
+unvalidated sub-mechanism.
+
+Result: 251-500 jumps from Sigma53's 720.54 to 813.99 (+93.45) -- 251-500's
+own R^2 (0.9858, per the report) sits well above the 0.98 threshold, so
+the gate correctly detects the early "market-proxy" regime and reclaims
+plain-reversal's known edge there, something Sigma53's unconditional
+relative-reversal was leaving on the table entirely. 501-750 and 751-1000
+are UNCHANGED (1063.53 and 1010.23) -- R^2 never crosses back above 0.98
+in either window, so the gate is a pure no-op there, not a trade-off.
+Block-level vs Sigma53 on 251-500: 7/10 blocks, broadly distributed (no
+single block dominating the +22,642 total incremental PnL).
+
+Verdict: PROMOTED as Sigma55_Consolidated.py (Model List). This is a
+materially cleaner signature than anything else in this lineage -- a real,
+block-consistent improvement on one window, exactly zero cost on the other
+two (not a trade-off dressed up as a wash), backed by an independently-
+confirmed structural break, and built from a mechanism that can causally
+revert in either direction as new data arrives. Answering the user's
+direct question: no single "Sigma53" variant (this log's own
+Sigma53_Consolidated, the report's Sigma51+R^2-gate reconstruction, or
+Sigma55 itself) can be confidently bet as the highest scorer relative to
+the others, because all three are statistically indistinguishable on the
+one real window that matters (1010.2-1010.6, differences well within
+noise) -- the ALGO-sleeve variations under discussion here simply do not
+engage differently during 751-1000. Sigma55 is preferred not because it
+scores higher on real data than Sigma53 (it doesn't, they're tied) but
+because it is strictly better positioned for what real data cannot yet
+show: a return to a high-R^2 regime after day 1000.
+
+---
+
+Net including entry 48: Sigma55 is the new best-verified model, tied with
+Sigma53 at 1010.23 on real 751-1000 data but ahead on 251-500 (813.99 vs
+720.54) with zero cost elsewhere, and structurally better hedged for a
+possible future regime reversion. Sigma54 as supplied is REJECTED --
+independently confirmed to carry forward the day-750 switch's entire
+illegitimate real-data edge unchanged, with the new structural regime
+detector contributing nothing beyond what Sigma53 already had. The
+"adaptive" trailing-edge-vote ALGO selector (Sigma51's own mechanism,
+carried into the report's Sigma53) remains excluded, per entry 47 --
+confirmed again here to add complexity without any additional real-data-
+validated benefit over the simpler R^2-gate-with-relative_sign-fallback
+used in Sigma55.
+
+---
+
+### 49. Sigma54_CausalReliabilitySleeve -- a genuinely non-calendar regime detector for the LL committee, but its measured real-data gain fails the concentration check
+Background: the user supplied a third Sigma54 variant (a naming collision
+with entry 48's Sigma54_Sigma52StructuralRegime -- both named Sigma54,
+both distinct files), explicitly framed as "sort of a consolidated model
+of all proposed solutions to removing the 750 midpoint weakness." Its
+docstring claims a "causal three-state selector across the purged cross-
+fitted one-day LL committee, the frozen Sigma51 forecast, and a
+conservative 30/40% accumulated-source LL committee... contains no
+absolute calendar boundary and performs no midpoint reset." Built on
+Sigma51 (same non-ALGO chassis, same unvalidated adaptive ALGO selector
+from entries 47-48), with the day-750 switch replaced by a purged cross-
+fit "reliability" score of the 10-day-aggregated LL matrix's held-out
+positive mass, thresholded via a 9-combination low/high ensemble majority
+vote ({0.60,0.63,0.66} x {0.78,0.80,0.82}) recomputed at every 20-day
+rescan.
+
+Method: verified safety (no exec/eval/file I/O beyond numpy). Scored as
+supplied: 865.29/1152.25/1005.95/1039.69 across 251-500/501-750/751-1000
+(real)/501-1000 -- beats Sigma55 substantially on both dev windows but is
+actually slightly WORSE on the real window (-4.28, within noise).
+
+Before accepting or rejecting on the aggregate alone, instrumented the
+actual mode selection by running getMyPosition continuously across the
+full 1000-day history and logging every _architecture_mode transition.
+Result: transitions occur at days 560 (mode 0->2), 620 (2->0), 720 (0->2),
+940 (2->1) -- NOT at day 750. This is a genuinely different, non-calendar-
+locked mechanism, not the day-750 switch in disguise. Notably, mode 0 (the
+cross-fit committee, independently confirmed harmful on real data in
+entries 44/47) is never selected at all during 751-1000 -- the reliability
+gate correctly avoids it there, unlike a naive always-on committee would.
+
+Separately noticed the file silently changes REV_POS_ALPHA (0.45->0.30)
+and REV_GATE (2.0->1.75) from Sigma53/55's validated values, with zero
+mention in its own docstring (which only describes the selector).
+Reverting just these two parameters back to Sigma53/55's values, holding
+everything else (including the new reliability selector) fixed, IMPROVED
+every metric: 856.09/1157.45/1020.05/1037.57 -- beating Sigma55 on all
+four, including +9.82 on the real window. This alone is a useful, if
+minor, finding: the file as originally supplied was actively worse than it
+needed to be for undisclosed reasons.
+
+Decisive check before trusting that +9.82: block-level comparison of the
+reverted variant against Sigma55 on 751-1000. Six of ten blocks show
+EXACTLY ZERO difference (positions byte-identical) -- the reliability
+selector's behaviour only differs from Sigma55's simpler chassis for a
+brief span. Cross-referencing against the mode trace: the one place real
+divergence occurs (block 9, days 951-976 in absolute terms) falls exactly
+inside the single mode-1 (aggregate-blend) stint identified at day 940.
+That one 25-day block alone accounts for essentially the entire net gain
+(+2,297.5 of it); blocks 1 and 10 show small, partially-offsetting
+residual differences. This is the same single-block-driven signature that
+correctly sank the AR-gated reversal in entry 27, and the opposite of the
+broad, multi-block signature (7/10, no dominating block) that validated
+the R^2-gate in entry 48.
+
+Verdict: the core design idea -- a continuously-recomputed, purged
+reliability score instead of a calendar switch -- is methodologically
+sound and correctly avoids deploying the already-proven-harmful cross-fit
+committee during the real window. But the specific measured improvement
+over Sigma55 does not survive the concentration check: it is one lucky
+25-day block, not a broad effect, and should not be treated as validated
+evidence the three-state selector generalizes. NOT promoted. The ALGO
+sleeve is unchanged from Sigma51 and still carries the same trailing-
+edge-vote selector rejected in entries 47-48 for having zero real-data
+engagement. Sigma55 remains the reference baseline.
+
+---
+
+Net including entry 49: no change to the lineage. This entry adds a
+further data point for the project's now well-established concentration/
+breadth check: a mechanism can be non-calendar, causally computed, and
+directionally sensible (correctly avoiding a known-bad sub-component) and
+still fail to clear the bar for promotion if its measured real-data
+benefit turns out to be a single-block artifact rather than a broad
+effect. The distinguishing test between this entry's rejected finding and
+entry 48's promoted R^2-gate is identical in both cases: block-level
+concentration, not the aggregate number or the plausibility of the
+underlying design.
+
+---
+
+### 50. Critical methodology correction: the primary evaluation metric was wrong, and entry 49's rejection reverses
+Background: the user supplied a fourth independent artifact,
+Sigma53_Blind750_CrossFitAdaptive.py plus its research report -- a
+genuinely different exercise from everything else in this batch: an
+attempt to build the best model using ONLY days 1-750 (architecture and
+every parameter selected blind, file hash-frozen before ever touching
+751-1000). Verified: SHA-256 matches exactly, and all four claimed scores
+(857.221/1161.842/986.607 fresh/1007.450 continuous) reproduce to the
+decimal via this project's own harness. The report itself surfaced
+something important: its model scores 986.61 on a FRESH 250-day
+751-1000 window, but only 852.34 on the 751-1000 SEGMENT of one
+continuous, unbroken 500-day run starting at day 501 -- a large,
+unexplained gap it flagged as a "production caveat" about state going
+stale over long deployments.
+
+Checked whether this project's own current best model (Sigma55) shows the
+same gap: YES, and larger in absolute terms -- fresh 751-1000 scores
+1010.23, but the 751-1000 segment of a continuous 501-1000 run scores
+only 890.55 (a 119.68 point drop). This is NOT specific to either
+model's architecture; it is a property of how this whole project has been
+scoring things.
+
+Read eval.py directly to understand the actual mechanism (rather than
+speculate): it runs as ONE continuous, freshly-imported Python process per
+invocation, looping `for t in range(startDay, nt+1)` with
+`startDay = nt - numTestDays`. There is no "fresh vs continuous deployment"
+distinction in the real evaluator at all -- there is only ONE run, over
+however many trailing days numTestDays specifies. What actually varies
+between this project's "751-1000" and "501-1000" scoring conventions is
+which numTestDays is assumed (250 vs 500), which shifts which absolute
+days trigger the model's periodic 20-day full-recompute (state["scanned"]
+alignment depends on where counting starts) -- entirely an artifact of
+which window size is assumed, unrelated to genuine state staleness.
+
+Asked the user directly, since this cannot be resolved from the data
+alone: (1) what numTestDays the real final evaluator uses, (2) whether
+days 751-1000 is itself the final scored block or another intermediate
+reveal. Answers: the final test will be on days 1001-1500 (500 days), and
+751-1000 is another intermediate reveal, not the final block -- exactly
+analogous to how 501-750 preceded it.
+
+This means the correct primary metric, for everything evaluated in this
+entire project going forward, is a CONTINUOUS 500-day score (one fresh
+process, 500-day unbroken run), not the 250-day fresh-window score every
+prior entry in this log (43 through 49) used to rank and promote
+candidates. With real data only available through day 1000, the closest
+available proxy is the continuous "501-1000" window (numTestDays=500,
+startDay=500) -- exactly what the user had already asked to track
+starting several exchanges ago ("match the time horizon of the final
+test"), which in hindsight was the right instinct from the start.
+
+Consequence: entry 49's rejection of Sigma54_CausalReliabilitySleeve was
+built on a concentration/block check run on the WRONG window (751-1000,
+250-day fresh). Redid it on the correct window (501-1000, continuous,
+now with block_compare_full.py generalized to any numTestDays): the file
+as originally supplied (no parameter reversion) scores 1039.69 on
+501-1000 (vs Sigma55's 977.24, +62.45), winning 13/20 25-day blocks, no
+single block dominating (largest block win 7,341 of a 30,997 total, 24%),
+top-5 name concentration 28.7% -- a genuinely broad, clean signature.
+Entry 49's reverted-parameter variant scores nearly identically (1037.57,
+14/20 blocks, 31.2% concentration) -- the two are statistically tied on
+the correct metric, so the parameter-revert finding that drove entry 49's
+narrative is no longer load-bearing either way.
+
+Verdict: entry 49's REJECTED verdict is REVERSED. Sigma54_CausalReliability
+Sleeve, AS ORIGINALLY SUPPLIED (unmodified), is PROMOTED as
+Sigma56_CausalReliabilitySleeve.py (Model List), replacing Sigma55 as the
+reference baseline. Full comparison on the corrected primary metric
+(501-1000, continuous):
+  Sigma44:               956.79
+  Sigma53/55:             977.24
+  Sigma53-blind (report): 1007.45
+  Sigma56 (this entry):  1039.69  <- new best
+
+---
+
+Net including entry 50: the project's primary evaluation metric changes
+from a 250-day fresh window to a continuous 500-day window, following
+direct confirmation from eval.py's own execution model and the user's
+clarification that the real final test is a continuous 500-day run on
+days 1001-1500, with days 751-1000 itself being another intermediate
+reveal rather than the final block. Sigma56_CausalReliabilitySleeve is
+the new best-verified model at 1039.69 on the continuous 501-1000 proxy.
+IMPORTANT OPEN ITEM: every promotion/rejection decision from entries 43
+through 49 was made using the 250-day fresh-window metric, which this
+entry shows can diverge substantially (100+ points) from the continuous
+500-day metric for the same underlying days. Those earlier verdicts have
+NOT yet been individually re-audited against the corrected metric --
+doing so (starting with the biggest claims: the Sigma34-lineage-vs-Sigma23
+finding in entries 43-44, and the cross-fit-committee rejection in entries
+44/47) is the top-priority follow-up before treating any current ranking
+as final.
+
+---
+
+### 51. Full re-audit on the corrected metric, as demanded by entry 50's open item -- clean, and one real correction found
+Background: entry 50 flagged that every promotion/rejection decision from
+entries 43-49 was made using the wrong (250-day fresh) metric, and had not
+been individually re-checked against the correct one (continuous 500-day,
+matching how eval.py actually runs and how the real final test on days
+1001-1500 will be scored). Explicitly instructed to close this out
+properly rather than leave it as a caveat.
+
+**Part 1: foundational lineage re-check.** Re-scored the full historical
+lineage on the corrected continuous "501-1000" metric (single fresh
+process, 500-day unbroken run):
+  Sigma19=790.23, Sigma23=853.88, Sigma34=890.78, Sigma42=904.82,
+  Sigma43=910.22, Sigma44=956.79, Sigma53/55=977.24, Sigma56=1039.69.
+Result: the ordering is IDENTICAL to what the old (wrong) metric implied.
+Every promotion decision in this log's history was directionally correct;
+only the magnitudes were previously overstated (e.g. Sigma34 beats Sigma23
+by +36.90 on the correct metric, not the +110 the 250-day metric
+suggested). This substantially de-risks the concern entry 50 raised --
+the lineage was not built on sand, it was built on a metric that measured
+the right direction with the wrong scale.
+
+**Part 2: adaptive ALGO selector re-ablated on the correct metric.**
+Entries 47/48 rejected this mechanism using the old metric (zero real-data
+engagement on 751-1000). Redone properly: compared Sigma51 (adaptive
+selector, 984.38) against Sigma53_Consolidated (flat relative-reversal,
+977.24) on 501-1000 -- only +7.14 apart, and the block breakdown shows WHY
+this cannot be trusted: 13 of 20 blocks show exactly zero difference, and
+the entire net effect is one block winning +9,537 nearly cancelled by
+another losing -10,666. Re-ran the identical ablation inside Sigma56's
+own architecture (with the causal reliability selector active): same
+result, same two blocks, same cancellation pattern (+5.98 net). This is
+the textbook large-offsetting-swings signature this log has repeatedly
+learned to distrust (entry 27's AR-gated reversal, most directly) --
+confirmed noisy and unreliable regardless of which chassis it sits on,
+now on the correct metric rather than the wrong one. Replaced with
+Sigma55's R^2 gate, which reduces to an identical result on this specific
+data (R^2 never re-crosses 0.98 during 501-1000) but carries a real causal
+story instead of an unvalidated vote.
+
+**Part 3: reliability-threshold neighbourhood sweep (the single biggest
+gap flagged before this entry).** _ARCH_RELIABILITY_LOWS/_HIGHS had never
+been swept. Tested 7 configurations on 501-1000: shifting the ensemble's
+center down by 0.025 (1043.44) and down by 0.05 (1021.84); up by 0.025
+(1005.41) and up by 0.05 (995.83); a much narrower band at the same center
+(1039.69, identical to baseline); and a much wider band at the same center
+(1039.69, identical to baseline). Result: a genuine plateau, not a lone
+spike -- nearby centers score comparably or better, degradation is
+graceful (not a cliff) and directionally consistent (worse as the
+ensemble shifts toward requiring higher reliability to trust cross-fit),
+and the ensemble's width doesn't matter at all, only its center. This is
+the cleanest neighbourhood-sweep result of any candidate this session.
+
+**Part 4: is the cross-fit committee doing real work, or just sitting as
+unused risk?** Forced mode 0 (cross-fit) to fall back to mode 2 whenever
+the reliability gate would otherwise select it. Score dropped from
+1039.69 to 995.78 (-43.91) -- confirming the committee is contributing
+real, positive value on the days it's actually selected (per entry 50's
+mode trace: days 120-559 and 620-719, i.e. parts of 251-500 and 501-750,
+never during 751-1000, the one window independently known to be harmful
+for this mechanism). This is one historical instance of the gate making
+the correct call, not a statistically validated guarantee it always will
+-- flagged honestly as the residual, irreducible uncertainty this audit
+cannot close (no second independent transition exists to test against).
+
+**Consolidated final candidate**: Sigma56's causal reliability selector
+(validated, Part 3) plus Sigma55's R^2-gated ALGO sleeve (Part 2) plus the
+already-validated basket/reversal sleeves (entry 47). Scores: 251-500=
+883.34, 501-750=1140.24, 751-1000=1005.95, 501-1000 (primary)=1033.71.
+Block-check vs Sigma53_Consolidated on the primary metric: 13/20 blocks,
+no single block dominating (largest is 26% of the total), top-5 name
+concentration 29.7% spread across genuinely diverse non-ALGO names (MMBT,
+MHRM, NWIG, ULXY, RRES, FCSG, NAYO -- not just ALGO, unlike every ALGO-
+sleeve-only ablation in this batch) -- the cleanest, most broadly
+distributed result of the entire re-audit.
+
+Verdict: PROMOTED as Sigma57_FullyAudited.py (Model List), replacing
+Sigma56. Scores marginally lower than Sigma56 (1033.71 vs 1039.69, a
+5.98-point difference already shown to be noise) but is more defensible:
+every component has now been individually validated on the correct
+metric, with a genuine parameter-neighbourhood plateau behind the one
+mechanism that had never been swept before.
+
+---
+
+Net including entry 51: the corrected-metric re-audit entry 50 called for
+is complete. Sigma57_FullyAudited is the new best-verified model at
+1033.71 on the primary (continuous 501-1000) metric, block-checked clean
+(13/20, 29.7% concentration, diverse names). The foundational lineage
+re-check found no structural problems -- every historical promotion
+decision was directionally correct even though magnitudes were previously
+overstated. The one mechanism that had never been neighbourhood-swept (the
+causal reliability threshold ensemble) now has a genuine plateau behind
+it. The one honestly-irreducible gap: the cross-fit committee's mode-
+selection has only ever been tested against one historical transition
+sequence -- a second real held-out window would be needed to fully
+validate it always avoids deploying cross-fit at the right times, and
+none exists yet.
+
+---
+
+### 52. Closing the re-audit: structural placebo battery for the reliability signal itself
+Background: entry 51's neighbourhood sweep confirmed the reliability
+THRESHOLDS sit on a genuine plateau, but left one gap open -- it never
+tested whether the underlying reliability SIGNAL (purged cross-fit
+positive-mass of the 10-day aggregate LL matrix) carries real information,
+as opposed to any plausible-looking time-varying quantity producing
+similar-looking gains just from occasionally switching formulas. Ran the
+standard three-placebo battery against Sigma57 on the primary (501-1000)
+metric, each swapping out ONLY the reliability computation and leaving
+every threshold, cadence, and downstream mechanism untouched:
+
+  Real (purged cross-fit reliability):        1033.71
+  Stale (same signal, 40-day/2-rescan lag):    1014.40  (-19.31)
+  Random (seeded uniform[0.5,1.0] each rescan): 986.34  (-47.37)
+  Inverted (swap which mode high/low selects):  939.24  (-94.47)
+
+Result: a clean, fully monotonic degradation -- real > stale > random >
+inverted. This is the strongest possible placebo signature available
+without a second real data window: the specific computation matters (real
+beats random by a wide margin), the timing matters (even a 40-day-stale
+version of the SAME correct signal underperforms the live one), and the
+direction matters (inverting the logic is worse than pure noise, not just
+worse than the real thing). None of this was true by construction --
+a decorative or coincidental switching mechanism would have scored
+close to random regardless of direction.
+
+Verdict: the re-audit demanded by the user is now complete and clean.
+Combined with entry 51's neighbourhood plateau and the foundational
+lineage re-check, Sigma57_FullyAudited has now passed every check this
+project's methodology has ever applied to a single candidate: block-level
+consistency, breadth/concentration, parameter-neighbourhood robustness,
+and a full placebo battery (random, inverted, timing) -- on the CORRECT
+metric throughout, not the one entries 43-49 mistakenly used. No change
+to the promoted model. The one gap that remains structurally irreducible
+(a second independent real transition to validate the mode-selection
+logic against) stays open until further real data exists -- this is a
+limit of the available data, not a gap in the validation process itself.
+
+---
+
+Net including entry 52: Sigma57_FullyAudited remains the best-verified
+model at 1033.71 on the primary metric, and is now the most thoroughly
+validated candidate in this project's history. The re-audit entry 50
+called for is closed.
+
+---
+
+### 53. Two remaining stated caveats (n=1 evidence, untested interactions) turn out to both be testable -- plus a documentation correction
+Background: asked directly whether "the mode-selection gate has only one
+historical instance behind it" and "interaction effects between validated
+components aren't ruled out" were themselves testable claims, rather than
+irreducible caveats. Both were.
+
+**Within-window predictive power (addresses the n=1 concern).** Rather
+than eyeballing the ~5 discrete mode transitions from entry 50's trace,
+built three counterfactual variants of Sigma57 with the architecture mode
+permanently forced to 0 (cross-fit), 1 (aggregate), or 2 (frozen base),
+ran each continuously over days 501-1000, and compared 20-day-block P&L
+across all three to determine which mode ACTUALLY performed best in each
+of 24 non-overlapping blocks -- then checked whether the real, adaptive
+gate's chosen mode matched. This is the same style of check that
+correctly killed the Sigma24_SpectralLL regime hypothesis in entry 35
+(average-difference claims are weak; within-window predictive power is
+the real test) -- applied here instead of skipped.
+
+Result: the gate's chosen mode matched the actual best-performing mode in
+16/24 blocks (66.7%), against a 33.3% random-chance baseline for a 3-way
+choice -- exactly double. Point-biserial correlation between reliability
+level and "cross-fit was actually best" = 0.394 (n=24), a real, positive,
+moderate signal. Not perfect (8/24 misses, clustered in the days 861-940
+stretch as reliability was declining through the ambiguous zone), but
+this is genuine, higher-powered evidence of predictive power, not a
+lucky anecdote -- a substantial upgrade from the "n=1, reassuring but not
+statistically powerful" characterization in entry 51. Still drawn from
+one historical span (not a second independent dataset), so this
+strengthens rather than fully closes the underlying limitation.
+
+**Interaction effects (addresses the "untested combinations" concern).**
+The ALGO sleeve is structurally proven non-interacting with everything
+else (ALGO_HEDGE_WEIGHT=0 means ALGO can neither affect nor be affected by
+the rest of the book -- provable from the code, not just testable) --
+already implicitly confirmed by the identical block-level deltas seen
+whenever the ALGO sleeve was ablated against different base chassis in
+entries 47/48/51. The remaining open question was whether the causal
+reliability gate's benefit depends on the basket/reversal sleeve weights.
+Tested directly: built a variant with Sigma44's original basket=0.1/
+flat-reversal-0.05 weights (instead of Sigma57's boosted 0.4/asymmetric),
+keeping the reliability gate, and compared removing cross-fit in both
+contexts:
+  With Sigma57's actual weights (basket=0.4, rev=0.30/0.15/1.75):
+    gate on 1033.71, gate off (mode 2 forced) 995.78 -- cross-fit's
+    contribution = +37.93.
+  With Sigma44's original weights (basket=0.1, rev=0.05/0.05/2.0):
+    gate on 1009.39, gate off (mode 2 forced) 957.93 -- cross-fit's
+    contribution = +51.46.
+Same direction, same order of magnitude, no sign flip -- but a genuine
+~25-30% swing in magnitude depending on context. The components are not
+perfectly additive, but no qualitative incompatibility (one component
+neutralising or reversing another) was found across this test.
+
+**Documentation correction found in the process.** Building the old-
+weights variant required matching Sigma57's actual REV_POS_ALPHA/
+REV_GATE values, which turned out NOT to be the "already-validated"
+0.45/0.15/2.0 from Sigma53_Consolidated as several earlier entries (and
+this project's memory file) stated -- Sigma56 and Sigma57 both actually
+carry REV_POS_ALPHA=0.30, REV_GATE=1.75, inherited unchanged from the
+originally-supplied Sigma54_CausalReliabilitySleeve.py file. This was a
+deliberate choice, not an oversight: entry 50 tested reverting to
+0.45/2.0 and found it statistically tied with the as-supplied values
+(1037.57 vs 1039.69 on Sigma56), so the as-supplied values were kept on
+purpose -- but the write-up afterward mis-stated which values that
+actually was. Corrected in Sigma57_FullyAudited.py's own docstring and in
+project memory; no change to the model or its score, only to the record.
+
+---
+
+Net including entry 53: both caveats raised after entry 52 were
+genuinely testable, and both tests came back supportive rather than
+neutral -- the reliability gate shows real (not perfect) predictive power
+at a much higher-powered granularity than previously checked, and
+component interactions are present but modest, not qualitatively
+destabilising. A real documentation error (misstated REV parameters for
+Sigma56/57) was also caught and fixed. No change to the promoted model or
+its score.

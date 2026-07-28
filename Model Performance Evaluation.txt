@@ -1,0 +1,56 @@
+Model Performance Evaluation
+
+Sigma7p
+- Performance:
+	- Days 251-500: 626
+	- Days 501-750: 621
+	- Days 751-1000:
+
+Sigma8
+- Performance:
+	- Days 251-500: 589
+	- Days 501-750: 706
+	- Days 751-1000:
+
+SigmaB10
+- Performance:
+	- Days 251-500: 745
+	- Days 501-750: 737
+	- Days 751-1000:
+
+Sigma10X
+- Performance:
+	- Days 251-500: 548
+	- Days 501-750: 806
+	- Days 751-1000:
+
+Sigma10FB
+- Performance:
+	- Days 251-500: 598
+	- Days 501-750: 786
+	- Days 751-1000:
+
+Sigma16
+- Performance:
+	- Days 251-500: 748
+	- Days 501-750: 787
+	- Days 751-1000:
+
+Sigma17
+- Performance:
+	- Days 251-500: 698
+	- Days 501-750: 842
+	- Days 751-1000:
+
+Sigma18
+- Performance:
+	- Days 251-500: 822
+	- Days 501-750: 825
+	- Days 751-1000:
+
+Zigma1_robust_774 (not promoted, kept on file only)
+- Performance:
+	- Days 251-500: 601
+	- Days 501-750: 774
+	- Days 751-1000:
+

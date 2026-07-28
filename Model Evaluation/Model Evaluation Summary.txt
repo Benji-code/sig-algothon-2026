@@ -147,4 +147,51 @@ Sigma20
 	- Days 251-500: 846
 	- Days 501-750: 853
 	- Days 751-1000:
-*Best-by-backtest model in the lineage as of this entry, beating Sigma19 on both windows (+14.9 / +16.7). Received from a third party (ChatGPT-authored) as a complete file, structurally related to the old rejected birth-catcher (recent-formation cointegration detection) but a genuinely different mechanism -- ensembled across 9 threshold definitions rather than one, veto-only rather than an independent additive trade, and gated by a momentum/lead-lag "winner protection" check. Validated with the full standard: correctness verified (fully causal, no lookahead), fires a reasonable number of times (206 flatten events over 750 days, not a handful of lucky trades), block-level consistency strong (8/10 and 7/10, small/surgical effect sizes, no single block dominating), and a 9-configuration neighbourhood sweep across both strictness knobs (unanimity fraction, winner-guard vote threshold) showed a genuinely wide, stable plateau with zero exceptions -- the cleanest robustness result of the whole exploration process, comparable to or exceeding the ag-vector's own validation. Not yet tested live. See Alpha Exploration Log entry 24.
+*Superseded by Sigma22. Beat Sigma19 on both windows (+14.9 / +16.7). Received from a third party (ChatGPT-authored) as a complete file, structurally related to the old rejected birth-catcher (recent-formation cointegration detection) but a genuinely different mechanism -- ensembled across 9 threshold definitions rather than one, veto-only rather than an independent additive trade, and gated by a momentum/lead-lag "winner protection" check. Validated with the full standard: correctness verified (fully causal, no lookahead), fires a reasonable number of times (206 flatten events over 750 days, not a handful of lucky trades), block-level consistency strong (8/10 and 7/10, small/surgical effect sizes, no single block dominating), and a 9-configuration neighbourhood sweep across both strictness knobs (unanimity fraction, winner-guard vote threshold) showed a genuinely wide, stable plateau with zero exceptions -- the cleanest robustness result of the whole exploration process, comparable to or exceeding the ag-vector's own validation. Not yet tested live. See Alpha Exploration Log entry 28.
+
+Sigma22
+- Architecture:
+	- Sigma20's exact chassis (seeds, gray tier, dense 2-factor lead-lag, ag-vector, plain 5-day ALGO reversal, robust birth guard), with one change: gray-tier pairs now fit their hedge ratio/spread on the latest 230 days instead of the full expanding history (GRAY_WIN=230)
+- Exposure:
+	- Identical to Sigma20 otherwise
+- Performance:
+	- Days 251-500: 848
+	- Days 501-750: 881
+	- Days 751-1000:
+*Best-by-backtest model in the lineage as of this entry, beating Sigma20 on both windows (+1.7 / +27.5). Background: a third-party file ("Sigma21_RecencyValidated") proposed shrinking BOTH the seed-pair window (450->200) and the gray-tier window (unwindowed->160) together; that bundle looked excellent in aggregate (+35/+67 vs Sigma19) and even passed a wide parameter-neighbourhood sweep, but FAILED block-level consistency decisively (4/10 blocks on 251-500, worse than a coin flip; the whole aggregate gain carried by 2-3 huge blocks) -- rejected as concentration risk, not edge (entry 29). Re-checking each piece separately with the block-level standard applied at every sweep point (not just the aggregate) found the seed window has no robust nearby improvement (450 looks close to optimal), but the gray-tier window does, in isolation: real, modest, block-consistent gains around 200-230 days. Verified combined with the full Sigma20 (not just the older Sigma19 base it was found on). Honest caveat: the 501-750 improvement is well-distributed and robust (8/10 blocks, no single block dominating); the 251-500 improvement, while nominally 6/10 blocks, rides on a thin margin (a single block of -261.5 nearly offsets the combined gains of all six winning blocks). Weaker evidence than Sigma20's own validation, but real and much more trustworthy than the rejected bundle. Not yet tested live. See Alpha Exploration Log entry 30.
+
+Sigma23
+- Architecture:
+	- Sigma19's exact chassis (seeds, gray tier unwindowed, dense 2-factor lead-lag, ag-vector, plain 5-day ALGO reversal), NOT built on Sigma20/22 -- per current project convention Sigma19 is the reference baseline (the robust birth guard underperformed on the first genuinely new 751-1000 data point, self-reported/unverified, see entry 31)
+	- Adds a causally-gated spectral (singular-value) shrinkage of the lead-lag matrix: at every 20-day rescan, an embedded walk-forward cross-validation check (`_cv_advantage`, holds out the trailing 40 days, fits both raw and spectral-shrunk matrices on data strictly before the holdout, compares which one actually forecasts the held-out days better) is combined multiplicatively with a structural gate (full/recent matrix disagreement x temporal stability of the dominant modes) to form a smooth 0-1 blend weight between the raw and spectral-shrunk lead-lag matrices
+- Exposure:
+	- Identical to Sigma19 otherwise
+- Performance:
+	- Days 251-500: 832
+	- Days 501-750: 902
+	- Days 751-1000:
+*Follows the decisive rejection of a plain, always-on spectral-shrinkage candidate ("Sigma24_SpectralLL", entries 32/35) which lost -48.56 on 251-500 in every one of 16 hyperparameter configs and 8 structural variants tested, despite winning +46.76 on 501-750. This file gates the same underlying mechanism causally instead of applying it always: verified the gate stays at EXACTLY ZERO throughout the entire 251-500 window (first activation is day 500), so this file reproduces Sigma19 almost exactly there (+0.07, 8/10 blocks show an exact 0.0 difference) while ramping to full strength by day 660 and capturing an even larger 501-750 gain than the plain candidate (+65.6 vs +46.76), with block-level support (7/10 blocks positive, gains not dominated by any single block). Swept all three gate threshold pairs (16 configurations) -- 251-500 never drops meaningfully below baseline and 501-750 improves substantially in every configuration, a genuinely wide plateau. One of the cleanest validation results in this project's history. Not yet tested live. See Alpha Exploration Log entry 36.
+
+Sigma43 (ChatGPT-authored, received as a complete file: Sigma43_ExtremeResidualReversal.py)
+- Architecture:
+	- NOT built on Sigma19/20/22/23 -- a separate lineage: Sigma25_AsymmetricSpectral core (seeds, gray tier, ungated asymmetric spectral/singular-value shrinkage of both the expanding and fixed-450-day lead-lag matrices, scale/power tuned independently per matrix, plus sparse residual restoration on off-diagonal entries, and the AG-vector) + Sigma25DG death-guard (flattens stale lead-lag-supported non-ALGO positions, preserved by component-level pair/AG-effect confirmation, rerouted to gray/seed direction otherwise) + a 10% multivariate local basket-reversion sleeve (fits each name's residual level against its 8 nearest-correlated peers on a 250-day window, ridge-regularized, fades the prediction residual) + a 5% extreme-residual-reversal sleeve (fades only cross-sectionally extreme, |z|>=2, one-day post-factor residual shocks)
+	- Plain 5-day self-referential ALGO reversal, unchanged from Sigma19, still present
+- Exposure:
+	- ALGO hedge off, plain 5-day reversal, full $100k cap; non-ALGO exposure spread across seeds/gray/spectral-LL/basket/extreme-residual sleeves, each layer additive into the same sign-based position
+- Performance:
+	- Days 251-500: 782 (independently verified this session)
+	- Days 501-750: 978 (independently verified this session)
+	- Days 751-1000: 946 (independently verified this session against the real panel, exact match to the figure this lineage was already tracking)
+*Was the best-verified model in the lineage prior to this entry. Genuinely lopsided profile (worse than Sigma19 on 251-500 by about 50 points, much better on both 501-750 and 751-1000) -- this project's own block-level/lopsided-tradeoff heuristics would normally flag this as overfitting, but confirmed on real, previously-unseen 751-1000 data as a real, persistent, causal effect (not regime luck), per the log's own entries 43-44. File had never been durably saved to Model List before this session (recovered from a transient chat attachment); now saved. See Alpha Exploration Log entries 39-44.
+
+Sigma44 (RelativeAlgoReversal)
+- Architecture:
+	- Sigma43, unchanged, with exactly one change: the plain 5-day self-referential ALGO reversal is replaced by a relative reversal -- beta-residualize ALGO's return against the equal-weight basket of the other 49 names (60-day causal beta), fade the residual's 3-day cumulative move, same $100k cap
+- Exposure:
+	- Identical to Sigma43 otherwise
+- Performance:
+	- Days 251-500: 706
+	- Days 501-750: 1034
+	- Days 751-1000: 983
+	- Days 501-1000 (combined, matches final test horizon): 957
+*Best-verified model in the lineage as of this entry. Background: ALGO is ~98.6% a pure proxy for the common market factor by construction (this session's own prior finding), so the plain reversal is really an aggregate/index-level bet, not idiosyncratic alpha; relative reversal was found and validated as a robust-but-two-sided alternative when only two overlapping in-sample windows existed (worse 251-500, better 501-750, a stable parameter plateau with no sign flips, but genuinely inconclusive with only two windows to judge from -- deliberately not promoted at the time). With real 751-1000 data now available: relative reversal improves Sigma43's score by +37.32 (946.10 -> 983.42) on this genuinely fresh window, following the exact lopsided-but-real signature already validated for the rest of this lineage (worse 251-500, better on BOTH post-day-500 windows, not reverting on the new data). Block-level: 6/10 blocks positive on 751-1000, no single block dominating. REL_BW=60/REL_H=3 subsequently passed a full neighbourhood-plateau check (20-config grid, h=3 dominates uniformly across every beta_window with zero exceptions; block-level win rate identical across bw=50/60/75 at 6/10) -- fully validated by this project's own robustness standard, see Alpha Exploration Log entry 47. Not yet tested live. See Alpha Exploration Log entries 45-47.

@@ -4,70 +4,95 @@ Sigma7p
 - Performance:
 	- Days 251-500: 626
 	- Days 501-750: 621
-	- Days 751-1000:
+	- Days 751-1000: 574
 
 Sigma8
 - Performance:
 	- Days 251-500: 589
 	- Days 501-750: 706
-	- Days 751-1000:
+	- Days 751-1000: 579
 
 SigmaB10
 - Performance:
 	- Days 251-500: 745
 	- Days 501-750: 737
-	- Days 751-1000:
+	- Days 751-1000: 671
 
 Sigma10X
 - Performance:
 	- Days 251-500: 548
 	- Days 501-750: 806
-	- Days 751-1000:
+	- Days 751-1000: 749
 
 Sigma10FB
 - Performance:
 	- Days 251-500: 598
 	- Days 501-750: 786
-	- Days 751-1000:
+	- Days 751-1000: 587
 
 Sigma16
 - Performance:
 	- Days 251-500: 748
 	- Days 501-750: 787
-	- Days 751-1000:
+	- Days 751-1000: 584
 
 Sigma17
 - Performance:
 	- Days 251-500: 698
 	- Days 501-750: 842
-	- Days 751-1000:
+	- Days 751-1000: 523
 
 Sigma18
 - Performance:
 	- Days 251-500: 822
 	- Days 501-750: 825
-	- Days 751-1000:
+	- Days 751-1000: 798
 
 Zigma1_robust_774 (not promoted, kept on file only)
 - Performance:
 	- Days 251-500: 601
 	- Days 501-750: 774
-	- Days 751-1000:
+	- Days 751-1000: 540
 
 Zigma1_alpha_exec (not promoted, 251-500 number is contaminated, see log entry 12)
 - Performance:
 	- Days 251-500: 949 (in-sample, cutoffs overlap this window)
 	- Days 501-750: 338 (genuine out-of-sample)
-	- Days 751-1000:
+	- Days 751-1000: 300
 
 Sigma19
 - Performance:
 	- Days 251-500: 832
 	- Days 501-750: 837
-	- Days 751-1000:
+	- Days 751-1000: 806
 
 Sigma20
 - Performance:
 	- Days 251-500: 846
 	- Days 501-750: 853
-	- Days 751-1000:
+	- Days 751-1000: 794
+
+Sigma22
+- Performance:
+	- Days 251-500: 848
+	- Days 501-750: 881
+	- Days 751-1000: 796
+
+Sigma23
+- Performance:
+	- Days 251-500: 832
+	- Days 501-750: 902
+	- Days 751-1000: 833
+
+Sigma43
+- Performance:
+	- Days 251-500: 782
+	- Days 501-750: 978
+	- Days 751-1000: 946
+
+Sigma44
+- Performance:
+	- Days 251-500: 706
+	- Days 501-750: 1034
+	- Days 751-1000: 983
+	- Days 501-1000 (combined, matches final test horizon): 957
