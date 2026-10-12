@@ -581,3 +581,83 @@ candidate files remain in `Model List/candidates/` for reference
 Sigma19_RegimeScale.py [voided attempt], Sigma19_VolGate.py [clean rerun],
 Sigma19_LLThreshPostBlend.py, Sigma19_LLFullSoftThresh.py); none promoted,
 `Model List/Sigma19.py` unchanged as Track A's best model.
+
+---
+
+### 14. Sigma58 promoted to Track A baseline (provenance caveat) + conviction-sizing rejection
+
+Between entry 13 and this one, a separate off-pipeline research thread (not
+run through the Agent 1/2/3 loop, and not previously written to this log)
+took the lineage from Sigma19 through Sigma58, scoring every intermediate
+candidate directly against the true days 751-1000 outcome at each step. That
+thread's own detailed round history (~40 rounds, referenced internally as
+entries 14-57) was never persisted to this file; it survives only as a
+compressed retrospective summary in `Sigma58.py`'s own header comment, and
+that summary itself references log entries that do not exist anywhere in
+this repo or its git history -- treat those citations as lost, same caveat
+already on record for Sigma19. Headline numbers for Sigma58 (continuous
+501-1000, this project's primary metric per the entry-50 metric-bug fix):
+251-500=883.34, 501-750=1140.24, 751-1000=1005.95, 501-1000=1033.71.
+
+On 2026-07-30, the user explicitly decided to promote Sigma58 into
+`Model List/` as the new Track A baseline of record, accepting the
+provenance caveat above rather than requiring independent re-verification
+of the missing 40-round history first. See `Model Evaluation Summary.txt`
+for the full entry.
+
+Before resuming the formal pipeline on this new baseline, one directly-run
+(not through Agent 1/2/3) round tested conviction-weighted position sizing:
+scale each non-ALGO position continuously (floor 0.5x-1.0x) by the strength
+of its combined pre-sign vote signal, instead of the existing binary
+full-$10k-whenever-nonzero deployment. Sanity check: floor=1.0 reproduced
+the baseline score exactly (883.34 on 251-500), confirming the patch was
+inert at that setting and the result below isn't an implementation
+artifact. Swept floor 1.0->0.9->0.8->0.7->0.6->0.5 on the 251-500 decision
+window: 883.34->867.07->850.19->833.57->817.29->800.13 -- perfectly
+monotonic, no plateau anywhere. 501-750 fell 1140.24->948.70 (-16.8%) at
+floor=0.5; 751-1000/501-1000 (confirmatory only, not used to decide)
+degraded by comparable magnitude. REJECTED: Sharpe barely moved
+(7.64->7.95 on 251-500) while mean P&L dropped in direct proportion to the
+size cut, meaning the combined-vote magnitude used as a conviction proxy
+does not predict trade quality in this book -- the votes behave as binary
+threshold triggers, not a continuous quality signal, so scaling by their
+raw magnitude just shrinks good and bad trades alike with no offsetting
+benefit. If this direction is revisited, a genuinely different conviction
+proxy (e.g. count of independently-agreeing signals, not raw combined-vote
+magnitude) would be needed rather than another scale/floor constant on this
+same one. `Model List/Sigma58.py` unchanged, no promotion from this round.
+
+---
+
+### 15. First full Agent 1/2/3 pipeline round on the Sigma58 baseline -- Sigma59 promoted
+
+Note on agent infrastructure: this round's `alpha-optimizer` and `alpha-evaluator` roles did not load as native spawnable agent types this session (only `alpha-track-coordinator` did, for reasons not root-caused). With the user's explicit approval, both roles were run as general-purpose agents given the full text of `alpha-optimizer.md`/`alpha-evaluator.md` as binding instructions, including the hard data-clearance boundaries. Functionally equivalent isolation to the native agents; flagging so this is legible to anyone auditing the round later.
+
+Three independent, parallel Agent-1 rounds were run off the Sigma58 baseline (not chained, to keep attribution clean):
+
+**Round A -- architecture-selector threshold recenter.** Agent 1 diagnosed the causal-reliability-gated selector's thresholds as structurally inert on `prices.txt` (the reliability metric never dropped into the old band across all of days 1-500, so mode stayed pinned at cross-fit-committee for every visible day) and tried recentering both threshold tuples by a uniform +0.28 shift to actually engage the other two modes. Internal folds: worst-fold flat (identical fold, mechanism confirmed inert there under both old and new thresholds), mean fold -4.81, 251-500 -60.69 (-6.9%). Self-discarded by Agent 1 before reaching Agent 2 -- correctly, since it already failed cleanly in-sample and spending a 501-750 look on it would have been pure holdout erosion for no reason.
+
+**Round B -- basket sleeve ridge strength.** Agent 1 swept the ridge-regression basket mean-reversion sleeve's regularization constant (`_primary_BASKET_RIDGE`) over 15 values (0.02-5.0) in isolation, found a genuine plateau/peak shape (not a monotonic drift or lone spike) in the 0.4-1.0 range, and picked 0.7 from the middle of it. Internal folds: 3 of 4 improved, worst fold 368.02->411.05, mean fold 703.93->721.67, 251-500 883.34->895.35 (+1.36%). Passed to Agent 2. Held-out 501-750: 1140.24->1148.12 (+0.69%), Sharpe 10.2149->10.1337 (slightly down even as mean/score rose). Block breakdown: 2 of 4 chronological blocks positive, 2 negative, net positive. Agent 2's diagnosis: robust-but-modest improvement with a regime-fragility caveat -- the gain never reverses sign anywhere (folds -> 251-500 -> 501-750), and its magnitude decays gradually rather than collapsing, which is the profile of a genuine effect rather than a fitted artifact, but the held-out gain leans on half the blocks and comes with a small risk-adjusted cost. Agent 3's verdict: PROMOTE, watch-item logged rather than treated as disqualifying. **Promoted as Sigma59** (`Model List/Sigma59.py`, formerly candidate `Sigma58_BasketSleeveRidge.py`).
+
+**Round C -- reversal gate threshold.** Agent 1 tightened the extreme-residual reversal overlay's gate (`_primary_REV_GATE`) from 1.75 to 2.0, picked as the most balanced (least cherry-picked-looking) point on a sweep plateau. Agent 1's own internal harness reported a 251-500 baseline of 858.93 and a candidate improvement to 861.44. Agent 2's independent, from-scratch harness reproduced this project's own recorded ground-truth Sigma58 baseline exactly (883.34) -- meaning Agent 1's self-reported baseline for this specific round (858.93) was wrong by about 2.8%, a real harness discrepancy, not just noise. Under Agent 2's correct numbers the candidate is actually worse on 251-500 (876.45, -0.78%), the opposite sign from what Agent 1 reported. Held-out 501-750 showed a negligible net gain (+0.28%) driven almost entirely by one of four chronological blocks (+2.88%) and substantially offset by another (-1.51%). Agent 3's verdict: REJECT -- not a borderline "iterate" call, since a harness-reproducibility failure on top of an already noise-level, single-block-driven result means the comparison itself isn't trustworthy yet, independent of whether REV_GATE is worth revisiting later with a fixed harness. Kept in `Model List/candidates/Sigma58_ReversalGateTightened.py` for the record, not promoted. The root cause of Agent 1's harness discrepancy on this specific round was not diagnosed and remains open if this direction is revisited.
+
+Verdict: NET POSITIVE PUSH. Sigma59 promoted as the new Track A baseline (251-500: 883.34->895.35, 501-750: 1140.24->1148.12), the first candidate in this project's history to clear the full Agent 1/2/3 pipeline -- developed and evaluated entirely within Track A's own 1-500/1-750 data-clearance discipline, with no step informed by days 751-1000, unlike the Sigma20-58 lineage it builds on. Two open items carried forward: (1) the block-concentration/Sharpe-softening watch item on the basket sleeve, worth monitoring if this area is touched again; (2) Agent 1's harness discrepancy on the reversal-gate round, worth root-causing before trusting any future REV_GATE-family sweep from the same harness pattern. `Model List/candidates/` also retains `Sigma58_ArchSelectorRecentered.py` and `Sigma58_NoGuardEngine.py` (an earlier, single-round ablation confirming the guard engine is load-bearing, not a discard candidate in this round's sense) for reference.
+
+---
+
+### 16. Agent-7-level post-promotion overfitting audit on Sigma59
+
+At the user's request to check Sigma59 for overfitting, Agent 7 (host, full clearance) re-ran the existing `validate_overfitting.py` robustness suite -- the same one already on record for Sigma58 in `validation_output/` -- against Sigma59, writing to `validation_output_sigma59/`. This used `prices_full_final.txt` (days 1-1000, including the true 751-1000 answer key) directly at Agent 7's own clearance level, as a one-shot post-hoc check of an already-promoted, already-decided candidate -- not to guide any further tuning choice, so this does not repeat the Sigma20-58 lineage's iterative-inspection overfitting pattern. Nothing from this file was or will be relayed to Agent 1/2/3/4.
+
+Full comparison against Sigma58's existing audit:
+
+- 251-500: 883.34 -> 895.35 (+1.36%) -- matches the pipeline's own numbers, as expected.
+- 501-750: 1140.24 -> 1148.12 (+0.69%) -- matches the pipeline's own numbers, as expected.
+- 751-1000 (true fresh holdout, never seen by Agent 1/2/3 during this round): 1005.95 -> 988.26 (-1.76%).
+- 501-1000 continuous: 1033.71 -> 1025.54 (-0.79%).
+- Concentration, leave-one-block-out range, mechanical-stress-test shape, placebo-test levels, and relationship-decay curve: all essentially unchanged from Sigma58's own audit -- no new red flag in any of these.
+- Parameter-neighbourhood sweep: sensitivity increased specifically for the two basket-sleeve-adjacent constants near this round's change (`_primary_BASKET_ALPHA` sd 4.71->7.19, `_primary_BASKET_GATE` sd 2.05->8.49); every other tested constant's sensitivity stayed roughly flat versus Sigma58's own sweep.
+
+Reading: not a catastrophic overfit by this audit's usual warning signs (no concentration spike, no leave-block-out collapse, no placebo-score jump, no cliff-like relationship-decay curve, no new-and-unrelated parameter spike). But the specific edge Sigma59 was promoted for does not generalize to the one window that was never available to Agent 1, Agent 2, or Agent 3 during the round -- it's a genuine, now-confirmed instance of the regime-fragility/block-concentration caveat Agent 3 already flagged at promotion time, not a new failure mode. The localized rise in basket-sleeve parameter sensitivity is a second, independent piece of evidence pointing the same direction: this specific change nudged the strategy into a less flat part of its own parameter landscape for exactly the mechanism it touched.
+
+No action taken on this finding beyond recording it -- Sigma59 remains the Track A baseline pending user direction.

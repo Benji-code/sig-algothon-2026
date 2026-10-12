@@ -1,0 +1,72 @@
+SIG ALGOTHON ROBUSTNESS / OVERFITTING AUDIT
+================================================
+strategy: /Users/benjaminshatar/Library/CloudStorage/OneDrive-UNSW/Tertiary/Projects/comps/sig-algothon-2026/sigma59.py
+prices: /Users/benjaminshatar/Library/CloudStorage/OneDrive-UNSW/Tertiary/Projects/comps/sig-algothon-2026/prices_full_final.txt
+
+BASELINE
+Historical evaluation              score=  1025.54 mean=  1039.19 Sharpe=   8.67 total=     519594 maxDD=      9069
+
+RESTARTED CHRONOLOGICAL WINDOWS
+251-500                            score=   895.35 mean=   910.25 Sharpe=   7.75 total=     227563 maxDD=      8260
+501-750                            score=  1148.12 mean=  1159.30 Sharpe=  10.13 total=     289824 maxDD=      5730
+751-1000                           score=   988.26 mean=  1003.04 Sharpe=   8.18 total=     250759 maxDD=      9795
+501-1000                           score=  1025.54 mean=  1039.19 Sharpe=   8.67 total=     519594 maxDD=      9069
+
+CONTINUOUS 50-DAY BLOCKS
+count=10  mean=1024.59  median=1040.14  worst=501.97  positive=1.000
+
+LEAVE-ONE-50-DAY-BLOCK-OUT
+score range after deleting one block: 966.64 to 1082.93
+
+CONCENTRATION
+Top five contributors: ALGO, EELT, AMRP, HUXZ, NGTE
+Top-five share of total P&L: 0.219
+After removing top five            score=   801.24 mean=   811.44 Sharpe=   8.86 total=     405720 maxDD=      7439
+After removing ALGO                score=   975.99 mean=   985.70 Sharpe=  10.02 total=     492852 maxDD=      5163
+
+MECHANICAL STRESS
+cost 1.0x, delay 0d                score=  1025.54 mean=  1039.19 Sharpe=   8.67 total=     519594 maxDD=      9069
+cost 1.0x, delay 1d                score=   250.30 mean=   292.31 Sharpe=   2.44 total=     146157 maxDD=     13448
+cost 1.0x, delay 2d                score=   218.90 mean=   267.45 Sharpe=   2.12 total=     133725 maxDD=     25968
+cost 2.0x, delay 0d                score=   984.00 mean=   998.19 Sharpe=   8.33 total=     499094 maxDD=      9529
+cost 2.0x, delay 1d                score=   204.88 mean=   251.37 Sharpe=   2.10 total=     125684 maxDD=     14183
+cost 2.0x, delay 2d                score=   173.03 mean=   226.52 Sharpe=   1.80 total=     113261 maxDD=     28295
+cost 3.0x, delay 0d                score=   942.41 mean=   957.19 Sharpe=   7.99 total=     478594 maxDD=      9989
+cost 3.0x, delay 1d                score=   158.97 mean=   210.42 Sharpe=   1.76 total=     105211 maxDD=     16462
+cost 3.0x, delay 2d                score=   127.09 mean=   185.59 Sharpe=   1.47 total=      92797 maxDD=     30623
+cost 5.0x, delay 0d                score=   859.08 mean=   875.19 Sharpe=   7.30 total=     437594 maxDD=     10910
+cost 5.0x, delay 1d                score=    68.84 mean=   128.53 Sharpe=   1.07 total=      64264 maxDD=     22118
+cost 5.0x, delay 2d                score=    41.95 mean=   103.74 Sharpe=   0.82 total=      51868 maxDD=     39407
+
+PLACEBO TESTS
+independent_shift        mean=    64.45 p05=     3.22 median=    35.75 p95=   189.99 P(score>0)=0.950
+block_permutation        mean=   506.30 p05=   397.53 median=   489.37 p95=   633.49 P(score>0)=1.000
+A high placebo score is a warning: the strategy may profit from generic drift/volatility or an evaluator artefact rather than the intended cross-instrument structure.
+
+RELATIONSHIP-DECAY FUTURES
+retention=1.00  mean=  1324.61 p05=  1166.37 median=  1327.57 p95=  1517.78 P(score>0)=1.000
+retention=0.75  mean=   653.00 p05=   513.85 median=   678.36 p95=   759.65 P(score>0)=1.000
+retention=0.50  mean=   240.96 p05=    86.14 median=   251.56 p95=   389.33 P(score>0)=1.000
+retention=0.25  mean=    50.74 p05=   -54.45 median=    43.29 p95=   157.93 P(score>0)=0.750
+retention=0.00  mean=    -6.26 p05=  -117.25 median=     0.04 p95=    80.41 P(score>0)=0.550
+A gradual rather than cliff-like decline is more reassuring. Strong performance only at retention=1 indicates dependence on historical relationships remaining almost unchanged.
+
+PARAMETER NEIGHBOURHOODS
+_primary_LLW                   mean=  1005.59 min=   983.69 max=  1017.18 sd=   13.08
+_primary_LL_BLEND              mean=  1006.38 min=   992.11 max=  1019.39 sd=    9.92
+_primary_LL_THRESH             mean=  1004.52 min=   998.13 max=  1011.59 sd=    5.27
+_primary_LL_FULL_SV_SCALE      mean=  1010.16 min=  1007.00 max=  1014.24 sd=    2.75
+_primary_LL_RECENT_SV_SCALE    mean=  1024.43 min=  1019.19 max=  1028.39 sd=    4.04
+_primary_GW                    mean=  1012.75 min=  1006.26 max=  1025.85 sd=    7.93
+_primary_BASKET_ALPHA          mean=  1023.00 min=  1014.16 max=  1031.22 sd=    7.19
+_primary_BASKET_GATE           mean=  1022.33 min=  1012.62 max=  1030.78 sd=    8.49
+_primary_REV_GATE              mean=  1016.69 min=  1005.52 max=  1022.58 sd=    6.64
+_primary_CF_GATE               mean=  1017.05 min=  1014.84 max=  1020.05 sd=    2.26
+_CB_TRAIL_WINDOW               mean=  1025.54 min=  1025.54 max=  1025.54 sd=    0.00
+_CB_MIN_SCALE                  mean=  1025.54 min=  1025.54 max=  1025.54 sd=    0.00
+_CB_SHARPE_FLOOR               mean=  1025.54 min=  1025.54 max=  1025.54 sd=    0.00
+Neighbouring variants should form a broad plateau. A large standard deviation or severe minimum is evidence of parameter fragility.
+
+HOW TO INTERPRET THE AUDIT
+No individual failure proves that the strategy is overfit, and no collection of passes proves the historical score will repeat. The strongest warning combination is: high concentration, weak leave-block-out results, isolated parameter peaks, positive placebo scores, and rapid collapse as relationship retention falls.
+This audit does not remove the selection bias created by using the same 1,000 days to develop many strategy generations.
